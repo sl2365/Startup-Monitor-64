@@ -134,7 +134,8 @@ The Settings GUI features several tabs that allow for detailed configuration and
   - Startup folders
   - Windows Scheduled Tasks
 
-- **Default Locations:**  
+- **Default Locations:**
+```
 [Folders]
 C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup\
 C:\Users\<Username>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
@@ -158,6 +159,7 @@ HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\Userini
 HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\Shell
 HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\Windows
 HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager
+```
 ---
 
 ### **3. Allowed Tab**
