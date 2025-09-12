@@ -1,9 +1,10 @@
-# Startup-Monitor-64
-Monitors system folders and registry entries for changes.
+# Startup Monitor (AutoIt)
 
 ## Overview
 
 This Windows tray application monitors system startup locations, scheduled tasks, and registry entries for changes or new items. It alerts the user to new startup entries, lets the user approve or deny them, and provides options for logging and deletion. All configuration and log files are stored in a dedicated `App` folder within the application's directory.
+
+The app can be used to monitor any custom location added by the user, so this could serve as an app monitor, checking for changes in folders or registry locations.
 
 ---
 
@@ -38,7 +39,7 @@ All files are created in:
 |---------------------|---------------------------------------------------------------------------|
 | Allowed.ini         | User-allowed startup/scheduled task items                                 |
 | Denied.ini          | User-denied startup/scheduled task items                                  |
-| Log.ini             | Log of all actions                                                        |
+| Log.ini             | Log of all actions (Last 30 days)                                         |
 | Settings.ini        | App settings/configuration                                                |
 | BaseStartup.ini     | Baseline snapshot of startup items at first run                           |
 | BaseTasks.ini       | Baseline snapshot of scheduled tasks at first run                         |
@@ -53,14 +54,14 @@ All files are created in:
    - Takes baseline snapshots of startup folders and scheduled tasks.
 
 2. **Monitoring**  
-   - The app polls monitored locations at the interval set in Settings GUI: MonitorTime, default: 3000ms.
+   - The app polls monitored locations at the interval set in Settings GUI: MonitorTime, default: 3000ms. The longer the time, the less resources required.
    - Finds new items, compares them to baseline and Allowed/Denied lists, reports to user.
 
 3. **Review GUI**  
    - New or changed items open a review dialog with checkboxes:
-     - **Checked**: Item will be added to Allowed.ini (approved)
-     - **Unchecked**: Item will be added to Denied.ini (blocked/deleted)
-   - Denied items are deleted after a single confirmation messagebox.
+     - **CHECKED**: Item will be added to Allowed.ini (approved)
+     - **UNCHECKED**: Item will be added to Denied.ini (blocked/deleted)
+   - Denied items are deleted after a single confirmation message box.
    - Export List: This exports a full list of items shown in the Review GUI.
 
 4. **Tray Menu Functions**
@@ -71,23 +72,11 @@ All files are created in:
 
 ## Customising Monitored Locations
 
-Edit `Locations.ini` to add or remove folders/registry keys to be monitored.  
-- Folders: Under `[Folders]` section, one path per line, append `=1` to enable, `=0` to disable.
-- Registry: Under `[Registry]` section, one key per line, append `=1` to enable.
-
-Example:
-```
-[Folders]
-%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup=1
-[Registry]
-HKCU_RunOnce=1
-```
-
 ---
 
 # Settings GUI – Options & Functionality
 
-Edit `Settings.ini` to adjust app behavior, or use the Settings window which covers all functionality.
+Edit `Settings.ini` to adjust app behavior, or use the Settings window which covers all functionality. Just click the tray icon and select Settings.
 
 ## **Settings Overview**
 ## **Main Settings Options**
@@ -116,7 +105,7 @@ The Settings GUI features several tabs that allow for detailed configuration and
 | **Review Window Height**          | Sets the height of the review window.                                                | 200–900 pixels                |
 | **Reset to Defaults**             | Restores all settings to their default values.                                       | Button                        |
 | **Open Settings Folder**          | Opens the folder containing application settings for manual review or backup.        | Button                        |
-
+NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab. These require clicking Apply, this will then save and exit.
 ---
 
 ### **2. Locations Tab**
@@ -124,11 +113,14 @@ The Settings GUI features several tabs that allow for detailed configuration and
 
 - **Purpose:**  
   Manage the startup locations that are monitored for changes. These locations typically include registry keys, file paths, and scheduled tasks.
-- **How to Use:**  
+- **How to Use:**
+- **Context Menu:** Right click the list view to access options.
   - **List View:** See all locations currently being monitored. Use checkboxes to enable/disable that item. Changes saved immediately.
-  - **Add Registry:** Add a new registry startup location to monitor. Use the "Open RegEdit" button, then use RegEdit to brwose to your location. Copy the desired path into the edit field, then click "Add Registry" button to add to the list.
   - **Remove:** Remove a location if you do not wish to monitor it. A confirmation message appears at the bottom of the window with OK/Cancel buttons.
-  - **Edit:** Modify an existing location's settings. Click an existing entry to populate the Edit field. Edit the path, then click "Edit" button to save the changes.
+  - **Edit:** Modify an existing location's settings. Right Click a list view item, select Edit, then the edit field appears below. Make your changes and click the Edit button to save.
+  - **Add Registry:** Add a new registry startup location to monitor. Use the "Open RegEdit" from the context menu, then use RegEdit to brwose to your location. Copy the desired path into the edit field, then click "Add Path" button to add to the list.
+  - **Add Folder:** Browse to a folder and add it to your monitoring list.
+  
 - **Typical Locations:**  
   - Registry keys like `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`
   - Startup folders
@@ -166,9 +158,11 @@ HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager
 
 - **Purpose:**  
   Manage the list of startup items that are explicitly allowed. Items in this list will not trigger alerts or warnings.
-- **How to Use:**  
-  - **Remove:** Remove items that are no longer trusted. Select item in the list view, click "Remove" button. Review the confirmation at the bottom of the window and select OK/Cancel as desired.
+- **How to Use:**
+- **Context Menu**
+  - **Remove:** Remove items that are no longer trusted. Select item in the list view, click "Remove". Review the confirmation at the bottom of the window and select OK/Cancel as desired.
   - **Refresh:** Refreshes list. Unlikely to be required as changes are applied immediately, but, just in case!
+  - **CopyPath:** Copies the full path of selected item.
 - **Use Case:**  
   For trusted programs you know and want to keep running at startup.
 
@@ -179,8 +173,10 @@ HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager
 - **Purpose:**  
   Manage the list of startup items that are explicitly denied. Any item matching entries in this list will trigger alerts and may be blocked.
 - **How to Use:**  
-  - **Remove:** Remove entries if a program is no longer considered a threat. Select item in the list view, click "Remove" button. Review the confirmation at the bottom of the window and select OK/Cancel as desired.
+- **Context Menu**
+  - **Remove:** Remove entries if a program is no longer considered a threat. Select item in the list view, click "Remove". Review the confirmation at the bottom of the window and select OK/Cancel as desired.
   - **Refresh:** Refreshes list. Unlikely to be required as changes are applied immediately, but, just in case!
+  - **CopyPath:** Copies the full path of selected item.
 - **Use Case:**  
   For known threats, unwanted software, or items you want to prevent from running at startup.
 
@@ -190,8 +186,8 @@ HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager
 
 Additional tabs for advanced settings, such as:
 - **Baseline:**  View and manage the persistent baseline of startup items.  
-  - **Use:** See which items were present during initial setup and adjust baseline as needed.
-- **Log:**  View logging details, such as log file path and retention. Delete existing log to start afresh. You can select and use Ctrl+C to copy selected text.
+  - **Use:** See which items were present during initial setup and adjust baseline as needed. Click to view full path and at the same time copy the full path to the clipboard.
+- **Log:**  View logging details, such as log file path and retention. Delete existing log to start afresh. You can select and right click to copy or use keyboard shortcuts.
 
 ---
 
@@ -222,15 +218,7 @@ Additional tabs for advanced settings, such as:
 
 ---
 
-For further support or questions, contact the repository maintainer.
-
----
-
-## Extending Functionality
-
-- **Registry Monitoring**: Stubbed; expand using AutoIt's RegEnum/RegRead functions.
-- **Scheduled Task Deletion**: Expand `_DeleteItem` to use schtasks.exe or WMI if desired.
-- **Settings GUI**: Developed for full configuration editing.
+For further support or questions, contact the repository maintainer, preferably at: https://www.portablefreeware.com/forums/viewtopic.php?t=26600&start=15.
 
 ---
 
