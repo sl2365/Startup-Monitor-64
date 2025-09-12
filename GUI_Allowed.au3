@@ -5,6 +5,7 @@
 #include <ListViewConstants.au3>
 #include <GuiListView.au3>
 #include <Clipboard.au3>
+#include <StaticConstants.au3>
 
 Global $g_AllowedListView = 0
 Global $g_AllowedListView_Handle = 0
