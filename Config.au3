@@ -37,6 +37,7 @@ Func _CreateDefaultSettings()
         "[Options]" & @CRLF & _
         "ClearLogOnStart=0" & @CRLF & _
         "MonitorTime=3000" & @CRLF & _
+        "MonitorTimeTasks=60000" & @CRLF & _
         "PersistentBaseline=1" & @CRLF & _
         "MonitorTasks=1" & @CRLF & _
         "Registry=1" & @CRLF & _
@@ -74,6 +75,10 @@ Func ConfigLoadSettings(ByRef $settingsDict)
         $settingsDict.Item("MonitorTime") = "3000"
         $needsSave = True
     EndIf
+    If Not $settingsDict.Exists("MonitorTimeTasks") Then 
+        $settingsDict.Item("MonitorTimeTasks") = "60000"
+        $needsSave = True
+    EndIf
     If Not $settingsDict.Exists("ClearLogOnStart") Then 
         $settingsDict.Item("ClearLogOnStart") = "0"
         $needsSave = True
@@ -98,6 +103,14 @@ Func ConfigLoadSettings(ByRef $settingsDict)
         $settingsDict.Item("ReviewWindowHeight") = "400"
         $needsSave = True
     EndIf
+
+    ; Enforce min/max for MonitorTimeTasks
+    If $settingsDict.Exists("MonitorTimeTasks") Then
+        Local $val = Number($settingsDict.Item("MonitorTimeTasks"))
+        If $val < 10000 Then $val = 10000
+        If $val > 3600000 Then $val = 3600000
+        $settingsDict.Item("MonitorTimeTasks") = String($val)
+    EndIf
     
     ; ONLY save if we actually added missing defaults
     If $needsSave Then
@@ -111,10 +124,16 @@ Func ConfigSaveSettings($settingsDict)
     ; Save Options and GUI settings to their respective sections
     For $key In $settingsDict.Keys
         Local $value = $settingsDict.Item($key)
-;~         ConsoleWrite("[" & ($key = "ReviewWindowWidth" Or $key = "ReviewWindowHeight" ? "GUI" : "Options") & "] " & $key & "=" & $value & @CRLF)
         ; Determine which section this key belongs to
         Switch $key
-            Case "ClearLogOnStart", "MonitorTime", "PersistentBaseline", "MonitorTasks", "Registry"
+            Case "ClearLogOnStart", "MonitorTime", "MonitorTimeTasks", "PersistentBaseline", "MonitorTasks", "Registry"
+                ; Enforce limits for MonitorTimeTasks before saving
+                If $key = "MonitorTimeTasks" Then
+                    Local $val = Number($value)
+                    If $val < 10000 Then $val = 10000
+                    If $val > 3600000 Then $val = 3600000
+                    $value = String($val)
+                EndIf
                 IniWrite($CONFIG_FILE_SETTINGS, "Options", $key, $value)
             Case "ReviewWindowWidth", "ReviewWindowHeight"
                 IniWrite($CONFIG_FILE_SETTINGS, "GUI", $key, $value)
