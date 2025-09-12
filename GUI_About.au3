@@ -8,11 +8,12 @@
 ; ABOUT TAB CREATION
 ; =================================================================
 Func GUIAboutCreate($parentGUI, $x, $y, $width, $height)
+	Local $version = FileGetVersion(@ScriptFullPath)
     ; Application info
     GUICtrlCreateLabel("Startup Monitor 64", $x + 10, $y + 20, 200, 25, $SS_CENTER)
     GUICtrlSetFont(-1, 16, 800)
     
-    GUICtrlCreateLabel("Version: 1.0.0", $x + 10, $y + 55, $width - 20, 20)
+    GUICtrlCreateLabel("Version: " & $version, $x + 10, $y + 55, $width - 20, 20)
     GUICtrlCreateLabel("Build Date: " & @YEAR & "-" & @MON & "-" & @MDAY, $x + 10, $y + 80, $width - 20, 20)
     
     ; Description
