@@ -63,20 +63,20 @@ EndFunc
 ; =================================================================
 Func _InitializeTray()
     TraySetToolTip($APP_NAME)
+	Global $gTrayTitle = TrayCreateItem($APP_NAME)
+    TrayCreateItem("")
     Global $gTraySettings = TrayCreateItem("⚙️ Settings")
-;~     Global $gTrayOpen = TrayCreateItem("Open Settings Folder")
     TrayCreateItem("")
     Global $gTrayExit = TrayCreateItem("❌ Exit")
     ; Handle tray events in main loop
 EndFunc
+
 
 Func _HandleTrayEvents()
     Local $msg = TrayGetMsg()
     Switch $msg
         Case $gTraySettings
             _OpenSettings()
-;~         Case $gTrayOpen
-;~             _OpenSettingsFolder()
         Case $gTrayExit
             Exit
     EndSwitch
