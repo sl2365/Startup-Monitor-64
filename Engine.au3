@@ -54,16 +54,17 @@ EndFunc
 ; MAIN MONITORING ENGINE
 ; =================================================================
 Func EngineMonitorTick($settingsDict, $foldersDict, $regTokensDict, $allowedDict, $deniedDict, _
-    $baseFoldersDict, $baseRegDict, $baseTasksDict, $cancelledItems)
+    $baseFoldersDict, $baseRegDict, $baseTasksDict, $cancelledItems, $cachedTasks = 0)
     
-    ; Initialize with proper 2D array structure
     Local $reviewItems[0][7] ; [key, displayName, type, detail, status, hash, checked]
     Local $monitorTasks = ($settingsDict.Exists("MonitorTasks") And $settingsDict.Item("MonitorTasks") = "1")
     Local $monitorRegistry = ($settingsDict.Exists("Registry") And $settingsDict.Item("Registry") = "1")
     
-    ; Scan folders
+    ; --- Profile folder scan ---
+    Local $t = TimerInit()
     Local $currentFiles = ScannersGetFolders($foldersDict)
     If IsArray($currentFiles) And UBound($currentFiles) > 0 Then
+        $t = TimerInit()
         For $i = 0 To UBound($currentFiles) - 1
             Local $path = $currentFiles[$i][0]
             Local $hash = $currentFiles[$i][1]
@@ -74,10 +75,12 @@ Func EngineMonitorTick($settingsDict, $foldersDict, $regTokensDict, $allowedDict
         Next
     EndIf
     
-    ; Scan registry if enabled
+    ; --- Profile registry scan ---
     If $monitorRegistry Then
+        $t = TimerInit()
         Local $currentRegistry = ScannersGetRegistry($regTokensDict)
         If IsArray($currentRegistry) And UBound($currentRegistry) > 0 Then
+            $t = TimerInit()
             For $i = 0 To UBound($currentRegistry) - 1
                 Local $regKey = $currentRegistry[$i][0]
                 Local $hash = $currentRegistry[$i][1]
@@ -89,18 +92,16 @@ Func EngineMonitorTick($settingsDict, $foldersDict, $regTokensDict, $allowedDict
         EndIf
     EndIf
     
-    ; Scan tasks if enabled
-    If $monitorTasks Then
-        Local $currentTasks = ScannersGetTasks()
-        If IsObj($currentTasks) And $currentTasks.Count > 0 Then
-            For $taskName In $currentTasks.Keys
-                Local $command = $currentTasks.Item($taskName)
-                Local $hash = _EngineHashString($taskName & "|" & $command)
-                
-                _EngineProcessItem($taskName, $taskName, "task", $command, $hash, $allowedDict, $deniedDict, _
-                    $baseTasksDict, $cancelledItems, $reviewItems)
-            Next
-        EndIf
+    ; --- Profile tasks scan ---
+    If $monitorTasks And IsObj($cachedTasks) And $cachedTasks.Count > 0 Then
+        $t = TimerInit()
+        For $taskName In $cachedTasks.Keys
+            Local $command = $cachedTasks.Item($taskName)
+            Local $hash = _EngineHashString($taskName & "|" & $command)
+            
+            _EngineProcessItem($taskName, $taskName, "task", $command, $hash, $allowedDict, $deniedDict, _
+                $baseTasksDict, $cancelledItems, $reviewItems)
+        Next
     EndIf
     
     Return $reviewItems
