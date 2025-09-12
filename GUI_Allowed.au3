@@ -16,6 +16,7 @@ Global $g_AllowedContextMenu = 0
 Global $g_AllowedContextMenu_Delete = 0
 Global $g_AllowedContextMenu_Refresh = 0
 Global $g_AllowedContextMenu_CopyPath = 0
+Global $g_MaxLineLen
 
 ; =================================================================
 ; ALLOWED TAB CREATION
