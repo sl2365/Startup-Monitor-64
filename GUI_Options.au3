@@ -6,7 +6,7 @@
 #include <StaticConstants.au3>
 #include <ButtonConstants.au3>
 
-Global $g_OptionsControls[11] ; Increased size for new controls
+Global $g_OptionsControls[12] ; Increased size for new controls
 Global $g_OptionsMsgPanel = 0
 Global $g_OptionsMsgLabel = 0
 Global $g_OptionsMsgOk = 0
@@ -16,35 +16,40 @@ Global $g_OptionsMsgCancel = 0
 ; OPTIONS TAB CREATION
 ; =================================================================
 Func GUIOptionsCreate($parentGUI, $x, $y, $width, $height, ByRef $settingsDict)
-    Local $controls[11]
+    Local $controls[12]
     Local $curY = $y
 
     ; Monitor Time setting
-    GUICtrlCreateLabel("Monitor Interval:", $x + 10, $curY + 20, 100, 20)
-    $controls[0] = GUICtrlCreateInput("", $x + 140, $curY + 16, 60, 20, $ES_NUMBER)
-    GUICtrlCreateLabel("Range: 1000-60000ms (1-60 sec)", $x + 220, $curY + 20, 200, 20)
+    GUICtrlCreateLabel("Monitor Interval (ms):", $x + 10, $curY + 30, 100, 20)
+    $controls[0] = GUICtrlCreateInput("", $x + 140, $curY + 26, 60, 20, $ES_NUMBER)
+    GUICtrlCreateLabel("Range: 1000-60000ms (1-60 sec)", $x + 220, $curY + 30, 200, 20)
+
+    ; Task Scan Interval setting (NEW)
+    GUICtrlCreateLabel("Task Scan Interval (ms):", $x + 10, $curY + 60, 130, 20)
+    $controls[11] = GUICtrlCreateInput("", $x + 140, $curY + 56, 60, 20, $ES_NUMBER)
+    GUICtrlCreateLabel("Range: 10000-3600000ms (10s-1hr)", $x + 220, $curY + 60, 230, 20)
 
     ; Clear Log on Start
-    $controls[1] = GUICtrlCreateCheckbox("Clear log file start", $x + 10, $curY + 60, 100, 20)
-    GUICtrlCreateLabel("(Creates new log file on each start)", $x + 30, $curY + 80, 400, 20)
+    $controls[1] = GUICtrlCreateCheckbox("Clear log file start", $x + 10, $curY + 100, 100, 20)
+    GUICtrlCreateLabel("(Creates new log file on each start)", $x + 30, $curY + 120, 400, 20)
 
     ; Persistent Baseline
-    $controls[2] = GUICtrlCreateCheckbox("Create persistent baseline (recommended)", $x + 10, $curY + 110, 220, 20)
-    GUICtrlCreateLabel("(Creates baseline of existing startup items on first run to reduce false alerts)", $x + 30, $curY + 130, 400, 20)
+    $controls[2] = GUICtrlCreateCheckbox("Create persistent baseline (recommended)", $x + 10, $curY + 150, 220, 20)
+    GUICtrlCreateLabel("(Creates baseline of existing startup items on first run to reduce false alerts)", $x + 30, $curY + 170, 400, 20)
 
     ; Monitor Tasks
-    $controls[3] = GUICtrlCreateCheckbox("Monitor scheduled tasks", $x + 10, $curY + 160, 130, 20)
-    GUICtrlCreateLabel("(Includes Windows scheduled tasks in monitoring)", $x + 30, $curY + 180, 400, 20)
+    $controls[3] = GUICtrlCreateCheckbox("Monitor scheduled tasks", $x + 10, $curY + 200, 130, 20)
+    GUICtrlCreateLabel("(Includes Windows scheduled tasks in monitoring)", $x + 30, $curY + 220, 400, 20)
 
     ; Monitor Registry
-    $controls[4] = GUICtrlCreateCheckbox("Monitor registry startup locations", $x + 10, $curY + 210, 170, 20)
-    GUICtrlCreateLabel("(Monitors registry keys for startup programs)", $x + 30, $curY + 230, 400, 20)
+    $controls[4] = GUICtrlCreateCheckbox("Monitor registry startup locations", $x + 10, $curY + 250, 170, 20)
+    GUICtrlCreateLabel("(Monitors registry keys for startup programs)", $x + 30, $curY + 270, 400, 20)
 
     ; Review Window Width/Height
-    GUICtrlCreateLabel("Review Window Width:", $x + 10, $curY + 260, 120, 20)
-    $controls[6] = GUICtrlCreateInput("", $x + 140, $curY + 256, 60, 20, $ES_NUMBER)
-    GUICtrlCreateLabel("Review Window Height:", $x + 10, $curY + 290, 160, 20)
-    $controls[7] = GUICtrlCreateInput("", $x + 140, $curY + 286, 60, 20, $ES_NUMBER)
+    GUICtrlCreateLabel("Review Window Width:", $x + 10, $curY + 300, 120, 20)
+    $controls[6] = GUICtrlCreateInput("", $x + 140, $curY + 296, 60, 20, $ES_NUMBER)
+    GUICtrlCreateLabel("Review Window Height:", $x + 10, $curY + 330, 160, 20)
+    $controls[7] = GUICtrlCreateInput("", $x + 140, $curY + 326, 60, 20, $ES_NUMBER)
 
     ; Reset to defaults button
     $controls[5] = GUICtrlCreateButton("Reset to Defaults", $x + 10, $curY + 400, 100, 30)
@@ -77,7 +82,7 @@ EndFunc
 ; OPTIONS TAB MESSAGE HANDLING
 ; =================================================================
 Func GUIOptionsHandleMessage($msg, $controls, ByRef $settingsDict)
-    If Not IsArray($controls) Or UBound($controls) < 11 Then Return
+    If Not IsArray($controls) Or UBound($controls) < 12 Then Return
 
     Switch $msg
         Case $controls[0] ; Monitor Time changed
@@ -149,6 +154,19 @@ Func GUIOptionsHandleMessage($msg, $controls, ByRef $settingsDict)
             _OptionsHideResetConfirmPanel($controls)
             _OptionsResetToDefaults($controls, $settingsDict)
 
+        Case $controls[11] ; Task Scan Interval changed (NEW)
+            Local $value = GUICtrlRead($controls[11])
+            If $value <> "" And IsNumber($value) Then
+                If $value >= 10000 And $value <= 3600000 Then
+                    $settingsDict.Item("MonitorTimeTasks") = String($value)
+                    ConfigSaveSettings($settingsDict)
+                Else
+                    MsgBox(48, "Invalid Value", "Task scan interval must be between 10000 and 3600000 milliseconds (10s-1hr).")
+                    Local $currentValue = $settingsDict.Exists("MonitorTimeTasks") ? $settingsDict.Item("MonitorTimeTasks") : "60000"
+                    GUICtrlSetData($controls[11], $currentValue)
+                EndIf
+            EndIf
+
         Case $g_OptionsMsgCancel ; Cancel clicked in message panel
             _OptionsHideResetConfirmPanel($controls)
     EndSwitch
@@ -163,6 +181,8 @@ Func _OptionsLoadValues($controls, $settingsDict)
     ; Monitor Time
     Local $monitorTime = $settingsDict.Exists("MonitorTime") ? $settingsDict.Item("MonitorTime") : "3000"
     GUICtrlSetData($controls[0], $monitorTime)
+	Local $taskTime = $settingsDict.Exists("MonitorTimeTasks") ? $settingsDict.Item("MonitorTimeTasks") : "60000"
+    GUICtrlSetData($controls[11], $taskTime)
     ; Clear Log on Start
     Local $clearLog = $settingsDict.Exists("ClearLogOnStart") ? $settingsDict.Item("ClearLogOnStart") : "0"
     GUICtrlSetState($controls[1], ($clearLog = "1") ? $GUI_CHECKED : $GUI_UNCHECKED)
@@ -186,6 +206,7 @@ EndFunc
 Func _OptionsResetToDefaults($controls, ByRef $settingsDict)
     ; Reset all values to defaults
     GUICtrlSetData($controls[0], "3000")
+	GUICtrlSetData($controls[11], "60000")
     GUICtrlSetState($controls[1], $GUI_UNCHECKED)
     GUICtrlSetState($controls[2], $GUI_CHECKED)
     GUICtrlSetState($controls[3], $GUI_CHECKED)
@@ -194,6 +215,7 @@ Func _OptionsResetToDefaults($controls, ByRef $settingsDict)
     GUICtrlSetData($controls[7], "400")
     ; Update settings dictionary
     $settingsDict.Item("MonitorTime") = "3000"
+	$settingsDict.Item("MonitorTimeTasks") = "60000"
     $settingsDict.Item("ClearLogOnStart") = "0"
     $settingsDict.Item("PersistentBaseline") = "1"
     $settingsDict.Item("MonitorTasks") = "1"
