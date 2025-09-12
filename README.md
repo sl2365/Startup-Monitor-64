@@ -106,7 +106,7 @@ The Settings GUI features several tabs that allow for detailed configuration and
 | **Reset to Defaults**             | Restores all settings to their default values.                                       | Button                        |
 | **Open Settings Folder**          | Opens the folder containing application settings for manual review or backup.        | Button                        |
 
-## NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab. These require clicking Apply, this will then save and exit.
+### NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab. These require clicking Apply, this will then save and exit.
 ---
 
 ### **2. Locations Tab**
