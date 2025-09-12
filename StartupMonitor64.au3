@@ -7,7 +7,7 @@
 #AutoIt3Wrapper_icon=StartupMonitor.ico
 #AutoIt3Wrapper_Res_Fileversion_First_Increment=Y	; AutoIncrement: Before (Y); After (N) compile. Default=N
 #AutoIt3Wrapper_Res_FileVersion_AutoIncrement=Y
-#AutoIt3Wrapper_Res_Fileversion=0.0.3.122
+#AutoIt3Wrapper_Res_Fileversion=0.0.3.125
 #AutoIt3Wrapper_Res_ProductVersion=3.3.16.1
 #AutoIt3Wrapper_Res_Description=StartupMonitor64
 #AutoIt3Wrapper_Res_LegalCopyright=sl23
@@ -25,7 +25,10 @@ Opt("TrayMenuMode", 3)
 Global Const $APP_NAME = "Startup Monitor"
 Global $gPaused = False
 Global $gMonitorTime = 3000
+Global $gMonitorTimeTasks = 60000
 Global $gNextTick = TimerInit()
+Global $gLastTasksTick = TimerInit()
+Global $gCachedTasks = ObjCreate("Scripting.Dictionary")
 Global $gReviewOpen = False
 ; Global references to loaded data (populated by Config.au3)
 Global $gSettingsDict, $gFoldersDict, $gRegTokensDict
@@ -54,6 +57,13 @@ Func _InitializeApp()
         $gMonitorTime = Number($gSettingsDict.Item("MonitorTime"))
         If $gMonitorTime < 1500 Then $gMonitorTime = 1500
     EndIf
+
+    ; Apply monitor time for tasks setting
+    If $gSettingsDict.Exists("MonitorTimeTasks") Then
+        $gMonitorTimeTasks = Number($gSettingsDict.Item("MonitorTimeTasks"))
+        If $gMonitorTimeTasks < 10000 Then $gMonitorTimeTasks = 10000
+        If $gMonitorTimeTasks > 3600000 Then $gMonitorTimeTasks = 3600000
+    EndIf
     
     EngineInitializeLogging($gSettingsDict)
 EndFunc
@@ -71,7 +81,6 @@ Func _InitializeTray()
     ; Handle tray events in main loop
 EndFunc
 
-
 Func _HandleTrayEvents()
     Local $msg = TrayGetMsg()
     Switch $msg
@@ -82,7 +91,7 @@ Func _HandleTrayEvents()
     EndSwitch
 EndFunc
 
-Func _OpenSettings()  ; ← ADD SETTINGS FUNCTION
+Func _OpenSettings()
     ; Open the Settings GUI
     Local $result = GUIShowSettings($gSettingsDict, $gFoldersDict, $gRegTokensDict, _
         $gAllowedDict, $gDeniedDict, $gBaseFoldersDict, $gBaseRegDict, $gBaseTasksDict)
@@ -94,6 +103,13 @@ Func _OpenSettings()  ; ← ADD SETTINGS FUNCTION
         $gMonitorTime = Number($gSettingsDict.Item("MonitorTime"))
         If $gMonitorTime < 1500 Then $gMonitorTime = 1500
     EndIf
+
+    ; Update task monitor time if changed
+    If $gSettingsDict.Exists("MonitorTimeTasks") Then
+        $gMonitorTimeTasks = Number($gSettingsDict.Item("MonitorTimeTasks"))
+        If $gMonitorTimeTasks < 10000 Then $gMonitorTimeTasks = 10000
+        If $gMonitorTimeTasks > 3600000 Then $gMonitorTimeTasks = 3600000
+    EndIf
     
     EngineLogWrite("SETTINGS", "gui", "settings_accessed", "configuration_reloaded", "SUCCESS")
 EndFunc
@@ -104,6 +120,7 @@ EndFunc
 Func _StartMainLoop()
     While 1
         _HandleTrayEvents()
+        ; Only run monitor cycle if not paused
         If Not $gPaused And Not $gReviewOpen Then
             Local $elapsed = TimerDiff($gNextTick)
             If $elapsed >= $gMonitorTime Then
@@ -111,8 +128,7 @@ Func _StartMainLoop()
                 _PerformMonitorCycle()
             EndIf
         EndIf
-        
-        Sleep(50)
+        Sleep(100)
     WEnd
 EndFunc
 
@@ -121,9 +137,20 @@ Func _PerformMonitorCycle()
     ConfigRefreshAllowedDenied($gAllowedDict, $gDeniedDict)
     ; Clean expired cancelled items (60 minutes = 3600000 ms)
     _CleanExpiredCancellations()
-    ; Perform monitoring tick
+    
+    ; Scheduled tasks caching
+    Local $monitorTasks = ($gSettingsDict.Exists("MonitorTasks") And $gSettingsDict.Item("MonitorTasks") = "1")
+    If $monitorTasks Then
+        If TimerDiff($gLastTasksTick) >= $gMonitorTimeTasks Or $gCachedTasks.Count = 0 Then
+            $gCachedTasks = ScannersGetTasks()
+            $gLastTasksTick = TimerInit()
+        EndIf
+    EndIf
+
+    ; Perform monitoring tick, pass cached tasks
     Local $reviewItems = EngineMonitorTick($gSettingsDict, $gFoldersDict, $gRegTokensDict, _
-        $gAllowedDict, $gDeniedDict, $gBaseFoldersDict, $gBaseRegDict, $gBaseTasksDict, $gCancelledItems)
+        $gAllowedDict, $gDeniedDict, $gBaseFoldersDict, $gBaseRegDict, $gBaseTasksDict, _
+        $gCancelledItems, $gCachedTasks)
     ; Show review GUI if items found
     If IsArray($reviewItems) And UBound($reviewItems) > 0 Then
         $gReviewOpen = True
