@@ -105,6 +105,7 @@ The Settings GUI features several tabs that allow for detailed configuration and
 | **Review Window Height**          | Sets the height of the review window.                                                | 200–900 pixels                |
 | **Reset to Defaults**             | Restores all settings to their default values.                                       | Button                        |
 | **Open Settings Folder**          | Opens the folder containing application settings for manual review or backup.        | Button                        |
+
 NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab. These require clicking Apply, this will then save and exit.
 ---
 
