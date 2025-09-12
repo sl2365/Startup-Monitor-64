@@ -96,7 +96,8 @@ The Settings GUI features several tabs that allow for detailed configuration and
 
 | Option                            | Description                                                                          | Values / Range                |
 |-----------------------------------|--------------------------------------------------------------------------------------|-------------------------------|
-| **Monitor Interval**              | Controls how often the application performs monitoring scans.                        | 1000–60000 ms (1–60 sec)      |
+| **Monitor Interval**              | Controls how often the application performs monitoring Scans.                        | 1000–60000 ms (1–60 sec)      |
+| **Tasks Scan Interval**           | Controls how often the application performs monitoring Tasks.                        | 10000–3600000 ms (10sec–1hr)  |
 | **Clear Log File Start**          | Whether to create a new log file on each startup.                                    | Checkbox (On/Off)             |
 | **Persistent Baseline**           | Creates a baseline of existing startup items on first run to reduce false alerts.    | Checkbox (On/Off)             |
 | **Monitor Scheduled Tasks**       | When enabled, scheduled tasks are included in the monitoring process.                | Checkbox (On/Off)             |
@@ -105,8 +106,7 @@ The Settings GUI features several tabs that allow for detailed configuration and
 | **Review Window Height**          | Sets the height of the review window.                                                | 200–900 pixels                |
 | **Reset to Defaults**             | Restores all settings to their default values.                                       | Button                        |
 | **Open Settings Folder**          | Opens the folder containing application settings for manual review or backup.        | Button                        |
-
-### NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab. These require clicking Apply, this will then save and exit.
+NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab. These require clicking Apply, this will then save and exit.
 ---
 
 ### **2. Locations Tab**
