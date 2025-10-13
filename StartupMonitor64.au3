@@ -7,7 +7,7 @@
 #AutoIt3Wrapper_icon=StartupMonitor.ico
 #AutoIt3Wrapper_Res_Fileversion_First_Increment=Y	; AutoIncrement: Before (Y); After (N) compile. Default=N
 #AutoIt3Wrapper_Res_FileVersion_AutoIncrement=Y
-#AutoIt3Wrapper_Res_Fileversion=0.0.3.125
+#AutoIt3Wrapper_Res_Fileversion=0.0.3.128
 #AutoIt3Wrapper_Res_ProductVersion=3.3.16.1
 #AutoIt3Wrapper_Res_Description=StartupMonitor64
 #AutoIt3Wrapper_Res_LegalCopyright=sl23
@@ -21,7 +21,9 @@ Opt("TrayMenuMode", 3)
 #include "Engine.au3"
 #include "GUI_Review.au3"
 #include "GUI_Settings.au3"
+#include "GUI_About.au3"
 
+Global $BUILD_DATE = "2025-10-13"		; ------------------- Set Build Date.
 Global Const $APP_NAME = "Startup Monitor"
 Global $gPaused = False
 Global $gMonitorTime = 3000
