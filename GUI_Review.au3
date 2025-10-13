@@ -42,25 +42,38 @@ Func GUIShowReview($itemsArray, $settingsDict)
     _GUICtrlListView_SetColumnWidth($listView, 2, $width - 320)
     _GUICtrlListView_SetColumnWidth($listView, 3, 70)
 
-    For $i = 0 To $arrayRows - 1
-        Local $statusText = ""
-        Switch $itemsArray[$i][4]
-            Case 0
-                $statusText = "NEW"
-            Case 1
-                $statusText = "ALLOWED"
-            Case 2
-                $statusText = "DENIED"
-            Case Else
-                $statusText = "UNKNOWN"
-        EndSwitch
-        
-        Local $itemIndex = _GUICtrlListView_AddItem($listView, $itemsArray[$i][1])
-        _GUICtrlListView_AddSubItem($listView, $itemIndex, $itemsArray[$i][2], 1)
-        _GUICtrlListView_AddSubItem($listView, $itemIndex, $itemsArray[$i][3], 2)
-        _GUICtrlListView_AddSubItem($listView, $itemIndex, $statusText, 3)
-        _GUICtrlListView_SetItemChecked($listView, $itemIndex, $itemsArray[$i][6])
-    Next
+    ; Get user setting for default checkbox state
+	Local $defaultChecked = True
+	If IsObj($settingsDict) And $settingsDict.Exists("DefaultCheckReviewItems") Then
+		$defaultChecked = ($settingsDict.Item("DefaultCheckReviewItems") = "1")
+	EndIf
+
+	For $i = 0 To $arrayRows - 1
+		Local $statusText = ""
+		Switch $itemsArray[$i][4]
+			Case 0
+				$statusText = "NEW"
+			Case 1
+				$statusText = "ALLOWED"
+			Case 2
+				$statusText = "DENIED"
+			Case Else
+				$statusText = "UNKNOWN"
+		EndSwitch
+
+		Local $itemIndex = _GUICtrlListView_AddItem($listView, $itemsArray[$i][1])
+		_GUICtrlListView_AddSubItem($listView, $itemIndex, $itemsArray[$i][2], 1)
+		_GUICtrlListView_AddSubItem($listView, $itemIndex, $itemsArray[$i][3], 2)
+		_GUICtrlListView_AddSubItem($listView, $itemIndex, $statusText, 3)
+    
+		; Only for NEW items, set checked/unchecked by setting
+		If $itemsArray[$i][4] = 0 Then
+			_GUICtrlListView_SetItemChecked($listView, $itemIndex, $defaultChecked)
+			$itemsArray[$i][6] = $defaultChecked
+		Else
+			_GUICtrlListView_SetItemChecked($listView, $itemIndex, $itemsArray[$i][6])
+		EndIf
+	Next
 
     ; Info labels (these go in footer area, y = $height - $footerHeight + offset)
     Local $footerY = $height - $footerHeight + 10
