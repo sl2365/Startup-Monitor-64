@@ -4,20 +4,24 @@
 #include <GUIConstants.au3>
 #include <StaticConstants.au3>
 
+Global $BUILD_DATE
+
 ; =================================================================
 ; ABOUT TAB CREATION
 ; =================================================================
 Func GUIAboutCreate($parentGUI, $x, $y, $width, $height)
 	Local $version = FileGetVersion(@ScriptFullPath)
     ; Application info
-    GUICtrlCreateLabel("Startup Monitor 64", $x + 10, $y + 20, 200, 25, $SS_CENTER)
+    GUICtrlCreateLabel("Startup Monitor 64", $x, $y + 20, 200, 25, $SS_CENTER)
     GUICtrlSetFont(-1, 16, 800)
-    
-    GUICtrlCreateLabel("Version: " & $version, $x + 10, $y + 55, $width - 20, 20)
-    GUICtrlCreateLabel("Build Date: " & @YEAR & "-" & @MON & "-" & @MDAY, $x + 10, $y + 80, $width - 20, 20)
+   
+	; Info
+    GUICtrlCreateLabel("Version: " & $version, $x + 10, $y + 60, $width - 20, 20)
+    GUICtrlCreateLabel("Build Date: " & $BUILD_DATE, $x + 10, $y + 80, $width - 20, 20)
+    GUICtrlCreateLabel("Today's Date: " & @YEAR & "-" & @MON & "-" & @MDAY, $x + 10, $y + 100, $width - 20, 20)
     
     ; Description
-    GUICtrlCreateLabel("Description:", $x + 10, $y + 120, $width - 20, 20)
+    GUICtrlCreateLabel("Description:", $x + 10, $y + 150, $width - 20, 20)
     GUICtrlSetFont(-1, 9, 600)
     
     Local $description = "Monitors Windows startup locations for new or modified entries. " & _
@@ -25,7 +29,7 @@ Func GUIAboutCreate($parentGUI, $x, $y, $width, $height)
         "registry entries, and scheduled tasks. Maintains baseline of existing " & _
         "items to reduce false alerts."
     
-    GUICtrlCreateLabel($description, $x + 10, $y + 145, $width - 20, 80, $SS_LEFT)
+    GUICtrlCreateLabel($description, $x + 10, $y + 175, $width - 20, 80, $SS_LEFT)
     
     ; Features
     GUICtrlCreateLabel("Features:", $x + 10, $y + 240, $width - 20, 20)
