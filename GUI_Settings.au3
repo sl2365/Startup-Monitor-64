@@ -1,248 +1,277 @@
-; GUI_Options.au3
+; GUI_Settings.au3
 
 #include-once
 #include <GUIConstantsEx.au3>
-#include <EditConstants.au3>
-#include <StaticConstants.au3>
-#include <ButtonConstants.au3>
+#include <WindowsConstants.au3>
+#include <TabConstants.au3>
+#include "Config.au3"
+#include "GUI_Locations.au3"
+#include "GUI_Allowed.au3"
+#include "GUI_Denied.au3"
+#include "GUI_BaseStartup.au3"
+#include "GUI_BaseTasks.au3"
+#include "GUI_Options.au3"
+#include "GUI_Log.au3"
+#include "GUI_About.au3"
 
-Global $g_OptionsControls[12] ; Increased size for new controls
-Global $g_OptionsMsgPanel = 0
-Global $g_OptionsMsgLabel = 0
-Global $g_OptionsMsgOk = 0
-Global $g_OptionsMsgCancel = 0
+Global $g_SettingsGUI = 0
+Global $g_SettingsTab = 0
+Global $g_TabHandles[8]
+Global $g_SettingsApplyBtn = 0
+Global $g_SettingsCloseBtn = 0
+Global $g_LastBaseStartupSelected = -1
+Global $g_MaxLineLen = 90 ; <-- define line length once
 
 ; =================================================================
-; OPTIONS TAB CREATION
+; MAIN SETTINGS GUI FUNCTION
 ; =================================================================
-Func GUIOptionsCreate($parentGUI, $x, $y, $width, $height, ByRef $settingsDict)
-    Local $controls[12]
-    Local $curY = $y
+Func GUIShowSettings(ByRef $settingsDict, ByRef $foldersDict, ByRef $regTokensDict, _
+    ByRef $allowedDict, ByRef $deniedDict, ByRef $baseFoldersDict, ByRef $baseRegDict, ByRef $baseTasksDict)
 
-    ; Monitor Time setting
-    GUICtrlCreateLabel("Monitor Interval (ms):", $x + 10, $curY + 30, 100, 20)
-    $controls[0] = GUICtrlCreateInput("", $x + 140, $curY + 26, 60, 20, $ES_NUMBER)
-    GUICtrlCreateLabel("Range: 1000-60000ms (1-60 sec)", $x + 220, $curY + 30, 200, 20)
+    Local $width = 800
+    Local $height = 600
+	
+    $g_SettingsGUI = GUICreate("Startup Monitor - Settings", $width, $height, -1, -1, _
+        BitOR($WS_CAPTION, $WS_SYSMENU, $WS_MINIMIZEBOX), $WS_EX_TOPMOST)
+    $g_SettingsTab = GUICtrlCreateTab(10, 10, $width - 20, $height - 60)
 
-    ; Task Scan Interval setting (NEW)
-    GUICtrlCreateLabel("Task Scan Interval (ms):", $x + 10, $curY + 60, 130, 20)
-    $controls[11] = GUICtrlCreateInput("", $x + 140, $curY + 56, 60, 20, $ES_NUMBER)
-    GUICtrlCreateLabel("Range: 10000-3600000ms (10s-1hr)", $x + 220, $curY + 60, 230, 20)
+    GUICtrlCreateTabItem("Options")
+    $g_TabHandles[0] = GUIOptionsCreate($g_SettingsGUI, 20, 40, $width - 40, $height - 110, $settingsDict)
+    GUICtrlCreateTabItem("Locations")
+    $g_TabHandles[1] = GUILocationsCreate($g_SettingsGUI, 20, 40, $width - 40, $height - 110, $foldersDict, $regTokensDict)
+    GUICtrlCreateTabItem("Allowed")
+    $g_TabHandles[2] = GUIAllowedCreate($g_SettingsGUI, 20, 40, $width - 40, $height - 110, $allowedDict)
+    GUICtrlCreateTabItem("Denied")
+    $g_TabHandles[3] = GUIDeniedCreate($g_SettingsGUI, 20, 40, $width - 40, $height - 110, $deniedDict)
+    GUICtrlCreateTabItem("Base Startup")
+    $g_TabHandles[4] = GUIBaseStartupCreate($g_SettingsGUI, 20, 40, $width - 40, $height - 110, $baseFoldersDict, $baseRegDict)
+    GUICtrlCreateTabItem("Base Tasks")
+    $g_TabHandles[5] = GUIBaseTasksCreate($g_SettingsGUI, 20, 40, $width - 40, $height - 110, $baseTasksDict)
+    GUICtrlCreateTabItem("Log File")
+    $g_TabHandles[6] = GUILogCreate($g_SettingsGUI, 20, 40, $width - 40, $height - 110)
+    GUICtrlCreateTabItem("About")
+    $g_TabHandles[7] = GUIAboutCreate($g_SettingsGUI, 20, 40, $width - 40, $height - 110)
+    GUICtrlCreateTabItem("") ; End tab creation
 
-    ; Clear Log on Start
-    $controls[1] = GUICtrlCreateCheckbox("Clear log file start", $x + 10, $curY + 100, 100, 20)
-    GUICtrlCreateLabel("(Creates new log file on each start)", $x + 30, $curY + 120, 400, 20)
+    $g_SettingsApplyBtn = GUICtrlCreateButton("Apply", $width - 180, $height - 40, 70, 30)
+    $g_SettingsCloseBtn = GUICtrlCreateButton("Close", $width - 100, $height - 40, 70, 30)
 
-    ; Persistent Baseline
-    $controls[2] = GUICtrlCreateCheckbox("Create persistent baseline (recommended)", $x + 10, $curY + 150, 220, 20)
-    GUICtrlCreateLabel("(Creates baseline of existing startup items on first run to reduce false alerts)", $x + 30, $curY + 170, 400, 20)
+    GUISetState(@SW_SHOW, $g_SettingsGUI)
+    WinSetOnTop("Startup Monitor - Settings", "", 1)
+    WinActivate("Startup Monitor - Settings")
+    Sleep(200)
+    WinSetOnTop($g_SettingsGUI, "", 0)
 
-    ; Monitor Tasks
-    $controls[3] = GUICtrlCreateCheckbox("Monitor scheduled tasks", $x + 10, $curY + 200, 130, 20)
-    GUICtrlCreateLabel("(Includes Windows scheduled tasks in monitoring)", $x + 30, $curY + 220, 400, 20)
+    Local $lastSelectedIndex = -1
+    Local $lastPath = ""
+    Local $result = "CANCEL"
+    Local $tabCount = 8 
+    Local $logTabInitialized = False
 
-    ; Monitor Registry
-    $controls[4] = GUICtrlCreateCheckbox("Monitor registry startup locations", $x + 10, $curY + 250, 170, 20)
-    GUICtrlCreateLabel("(Monitors registry keys for startup programs)", $x + 30, $curY + 270, 400, 20)
+    While 1
+        Local $msg = GUIGetMsg()
+        Local $currentTab = GUICtrlRead($g_SettingsTab)
+		
+        Switch $msg
+            Case $GUI_EVENT_CLOSE, $g_SettingsCloseBtn
+                $result = "CLOSE"
+                ExitLoop
 
-    ; Review Window Width/Height
-    GUICtrlCreateLabel("Review Window Width:", $x + 10, $curY + 300, 120, 20)
-    $controls[6] = GUICtrlCreateInput("", $x + 140, $curY + 296, 60, 20, $ES_NUMBER)
-    GUICtrlCreateLabel("Review Window Height:", $x + 10, $curY + 330, 160, 20)
-    $controls[7] = GUICtrlCreateInput("", $x + 140, $curY + 326, 60, 20, $ES_NUMBER)
+            Case $g_SettingsApplyBtn
+                _SettingsApplyAllChanges($settingsDict, $foldersDict, $regTokensDict, $allowedDict, $deniedDict)
+                $result = "APPLY"
+                ExitLoop
 
-    ; Reset to defaults button
-    $controls[5] = GUICtrlCreateButton("Reset to Defaults", $x + 10, $curY + 400, 100, 30)
-    $controls[8] = GUICtrlCreateButton("Settings Folder", $x + 10, $curY + 440, 100, 30)
+            Case Else
+                Switch $currentTab
+                    Case 0 ; Options
+                        GUIOptionsHandleMessage($msg, $g_TabHandles[0], $settingsDict)
+                    Case 1 ; Locations
+                        GUILocationsHandleMessage($msg, $g_TabHandles[1], $foldersDict, $regTokensDict)
+                        Local $locationsControls = $g_TabHandles[1]
+                        Local $selected = _GUICtrlListView_GetSelectedIndices($g_LocationsListView)
+                        If $selected <> "" Then
+                            Local $index = Int($selected)
+                            Local $path = _GUICtrlListView_GetItemText($g_LocationsListView, $index, 1)
+                            Local $editCurrent = GUICtrlRead($locationsControls[2])
+                            If $index <> $lastSelectedIndex And ($editCurrent = "" Or $editCurrent = $lastPath) Then
+                                GUICtrlSetData($locationsControls[2], $path)
+                                $lastSelectedIndex = $index
+                                $lastPath = $path
+                            EndIf
+                        Else
+                            $lastSelectedIndex = -1
+                            $lastPath = ""
+                        EndIf
+                    Case 2 ; Allowed
+                        GUIAllowedHandleMessage($msg, $g_TabHandles[2], $allowedDict)
+                    Case 3 ; Denied
+                        GUIDeniedHandleMessage($msg, $g_TabHandles[3], $deniedDict)
+                    Case 4 ; Base Startup
+                        GUIBaseStartupHandleMessage($msg, $g_TabHandles[4])
+                        If $msg = $g_BaseStartupListView Then
+                            Local $selected = _GUICtrlListView_GetSelectedIndices($g_BaseStartupListView)
+                            If $selected <> "" Then
+                                Local $index = Int($selected)
+                                Local $location = _GUICtrlListView_GetItemText($g_BaseStartupListView, $index, 3)
+                                If $location <> "" Then
+                                    GUICtrlSetData($g_BaseStartupMsgLabel, "Location/Path: " & $location)
+                                    GUICtrlSetState($g_BaseStartupMsgLabel, $GUI_SHOW)
+                                Else
+                                    GUICtrlSetState($g_BaseStartupMsgLabel, $GUI_HIDE)
+                                EndIf
+                            Else
+                                GUICtrlSetState($g_BaseStartupMsgLabel, $GUI_HIDE)
+                            EndIf
+                        EndIf
+                    Case 5 ; Base Tasks
+                        GUIBaseTasksHandleMessage($msg, $g_TabHandles[5])
+                    Case 6 ; Log File
+                        If Not $logTabInitialized Then
+                            _HandleLogTabInit()
+                            $logTabInitialized = True
+                        EndIf
+                        _HandleLogTabMessages($msg)
+                    Case 7 ; About
+                        GUIAboutHandleMessage($msg, $g_TabHandles[7])
+                EndSwitch
+        EndSwitch
+        Sleep(10)
+    WEnd
 
-    ; Message panel controls (hidden by default)
-    $controls[9] = GUICtrlCreateLabel("", $x + 130, $curY + 400, 250, 30, $SS_CENTER)
-    GUICtrlSetColor($controls[9], 0xAA0000)
-    GUICtrlSetFont($controls[9], 10, 700)
-    GUICtrlSetState($controls[9], $GUI_HIDE)
-    $controls[10] = GUICtrlCreateButton("OK", $x + 190, $curY + 440, 60, 20, $BS_DEFPUSHBUTTON)
-    GUICtrlSetState($controls[10], $GUI_HIDE)
-    $g_OptionsMsgPanel = $controls[9]
-    $g_OptionsMsgOk = $controls[10]
-    $g_OptionsMsgCancel = GUICtrlCreateButton("Cancel", $x + 260, $curY + 440, 60, 20)
-    GUICtrlSetState($g_OptionsMsgCancel, $GUI_HIDE)
+    WinSetOnTop("Startup Monitor - Settings", "", 0)
+    GUIDelete($g_SettingsGUI)
+    $g_SettingsGUI = 0
 
-    ; Load current values into controls
-    _OptionsLoadValues($controls, $settingsDict)
+    Return $result
+EndFunc
 
-    ; Store controls globally (optional, if used elsewhere)
-    For $i = 0 To UBound($controls) - 1
-        $g_OptionsControls[$i] = $controls[$i]
+; =================================================================
+; LOG TAB HELPER FUNCTIONS
+; =================================================================
+Func _HandleLogTabInit()
+    If IsArray($g_TabHandles[6]) Then
+        GUILogShowFile($g_TabHandles[6])
+    ElseIf $g_TabHandles[6] <> 0 Then
+        Local $logFile = @ScriptDir & "\App\Log.ini"
+        Local $logContent = ""
+        If FileExists($logFile) Then
+            $logContent = FileRead($logFile)
+        Else
+            $logContent = "(Log.ini does not exist)"
+        EndIf
+        GUICtrlSetData($g_TabHandles[6], $logContent)
+    EndIf
+EndFunc
+
+Func _HandleLogTabMessages($msg)
+    ; Add log tab message handling if needed
+    If $msg <> 0 Then
+        ; Handle any log-related messages here
+    EndIf
+EndFunc
+
+; =================================================================
+; HELPER FUNCTIONS
+; =================================================================
+Func _SettingsApplyAllChanges(ByRef $settingsDict, ByRef $foldersDict, ByRef $regTokensDict, ByRef $allowedDict, ByRef $deniedDict)
+    SaveOptionsTabSettings($settingsDict, $g_TabHandles[0])
+;~     GUILocationsApply($g_TabHandles[1], $foldersDict, $regTokensDict)
+    ConfigSaveLocations($foldersDict, $regTokensDict)
+    ConfigSaveAllowedDenied($allowedDict, $deniedDict)
+    EngineLogWrite("SETTINGS", "gui", "apply_all", "settings_applied", "SUCCESS")
+EndFunc
+
+Func SaveOptionsTabSettings($settingsDict, $optionsControls)
+    $settingsDict.Item("MonitorTime") = GUICtrlRead($optionsControls[0])
+    $settingsDict.Item("ReviewWindowWidth") = GUICtrlRead($optionsControls[6])
+    $settingsDict.Item("ReviewWindowHeight") = GUICtrlRead($optionsControls[7])
+    ConfigSaveSettings($settingsDict)
+EndFunc
+
+; =================================================================
+; WORD WRAP FUNCTION FOR LONG PATHS
+; =================================================================
+Func _SmartWordWrap($text, $g_MaxLineLen = 90)
+    If StringLen($text) <= $g_MaxLineLen Then
+        Return $text
+    EndIf
+    Local $out = ""
+    Local $start = 1
+    Local $len = StringLen($text)
+    While $start <= $len
+        Local $chunk = StringMid($text, $start, $g_MaxLineLen)
+        If StringLen($chunk) == $g_MaxLineLen Then
+            Local $breakPos = StringInStr($chunk, "\", 0, -1)
+            If $breakPos > 0 Then
+                $out &= StringLeft($chunk, $breakPos) & @CRLF
+                $start += $breakPos
+                ContinueLoop
+            EndIf
+        EndIf
+        $out &= $chunk
+        ExitLoop
+    WEnd
+    Return $out
+EndFunc
+
+Func SplitCommandTwoLines($sCommand)
+    Local $len = StringLen($sCommand)
+    If $len < 1 Then Return ""
+    Local $mid = Int($len / 2)
+    Local $split = 0
+    For $i = $mid To 1 Step -1
+        If StringMid($sCommand, $i, 1) = "\" Then
+            $split = $i
+            ExitLoop
+        EndIf
+    Next
+    If $split = 0 Then
+        For $i = $mid + 1 To $len
+            If StringMid($sCommand, $i, 1) = "\" Then
+                $split = $i
+                ExitLoop
+            EndIf
+        Next
+    EndIf
+    If $split = 0 Then $split = $mid
+    Local $line1 = StringLeft($sCommand, $split)
+    Local $line2 = StringTrimLeft($sCommand, $split)
+    Return $line1 & @CRLF & $line2
+EndFunc
+
+; =================================================================
+; NATURAL SORTING FOR INDEX COLUMN
+; =================================================================
+Func ListView_NaturalSortIndex($hListView, $iIndexCol = 0)
+    Local $itemCount = _GUICtrlListView_GetItemCount($hListView)
+    If $itemCount < 2 Then Return
+
+    Local $colCount = _GUICtrlListView_GetColumnCount($hListView)
+    Local $aRows[$itemCount][$colCount]
+
+    For $i = 0 To $itemCount - 1
+        For $j = 0 To $colCount - 1
+            $aRows[$i][$j] = _GUICtrlListView_GetItemText($hListView, $i, $j)
+        Next
     Next
 
-    Return $controls
-EndFunc
-
-; =================================================================
-; OPTIONS TAB MESSAGE HANDLING
-; =================================================================
-Func GUIOptionsHandleMessage($msg, $controls, ByRef $settingsDict)
-    If Not IsArray($controls) Or UBound($controls) < 12 Then Return
-
-    Switch $msg
-        Case $controls[0] ; Monitor Time changed
-            Local $value = GUICtrlRead($controls[0])
-            If $value <> "" And IsNumber($value) Then
-                If $value >= 1000 And $value <= 60000 Then
-                    $settingsDict.Item("MonitorTime") = String($value)
-                    ConfigSaveSettings($settingsDict)
-                Else
-                    MsgBox(48, "Invalid Value", "Monitor interval must be between 1000 and 60000 milliseconds.")
-                    Local $currentValue = $settingsDict.Exists("MonitorTime") ? $settingsDict.Item("MonitorTime") : "3000"
-                    GUICtrlSetData($controls[0], $currentValue)
-                EndIf
+    For $i = 0 To $itemCount - 2
+        For $j = $i + 1 To $itemCount - 1
+            If Number($aRows[$i][$iIndexCol]) > Number($aRows[$j][$iIndexCol]) Then
+                Local $temp
+                $temp = $aRows[$i]
+                $aRows[$i] = $aRows[$j]
+                $aRows[$j] = $temp
             EndIf
+        Next
+    Next
 
-        Case $controls[1] ; Clear Log on Start
-            Local $checked = (GUICtrlRead($controls[1]) = 1)
-            $settingsDict.Item("ClearLogOnStart") = $checked ? "1" : "0"
-            ConfigSaveSettings($settingsDict)
-
-        Case $controls[2] ; Persistent Baseline
-            Local $checked = (GUICtrlRead($controls[2]) = 1)
-            $settingsDict.Item("PersistentBaseline") = $checked ? "1" : "0"
-            ConfigSaveSettings($settingsDict)
-
-        Case $controls[3] ; Monitor Tasks
-            Local $checked = (GUICtrlRead($controls[3]) = 1)
-            $settingsDict.Item("MonitorTasks") = $checked ? "1" : "0"
-            ConfigSaveSettings($settingsDict)
-
-        Case $controls[4] ; Monitor Registry
-            Local $checked = (GUICtrlRead($controls[4]) = 1)
-            $settingsDict.Item("Registry") = $checked ? "1" : "0"
-            ConfigSaveSettings($settingsDict)
-
-        Case $controls[5] ; Reset to Defaults Button
-            _OptionsShowResetConfirmPanel($controls)
-
-        Case $controls[6] ; ReviewWindowWidth changed
-            Local $widthVal = GUICtrlRead($controls[6])
-            If $widthVal <> "" And IsNumber($widthVal) Then
-                If $widthVal >= 400 And $widthVal <= 1600 Then
-                    $settingsDict.Item("ReviewWindowWidth") = String($widthVal)
-                    ConfigSaveSettings($settingsDict)
-                Else
-                    MsgBox(48, "Invalid Value", "Review window width must be between 400 and 1600 pixels.")
-                    Local $currentValue = $settingsDict.Exists("ReviewWindowWidth") ? $settingsDict.Item("ReviewWindowWidth") : "800"
-                    GUICtrlSetData($controls[6], $currentValue)
-                EndIf
-            EndIf
-
-        Case $controls[7] ; ReviewWindowHeight changed
-            Local $heightVal = GUICtrlRead($controls[7])
-            If $heightVal <> "" And IsNumber($heightVal) Then
-                If $heightVal >= 200 And $heightVal <= 900 Then
-                    $settingsDict.Item("ReviewWindowHeight") = String($heightVal)
-                    ConfigSaveSettings($settingsDict)
-                Else
-                    MsgBox(48, "Invalid Value", "Review window height must be between 200 and 900 pixels.")
-                    Local $currentValue = $settingsDict.Exists("ReviewWindowHeight") ? $settingsDict.Item("ReviewWindowHeight") : "400"
-                    GUICtrlSetData($controls[7], $currentValue)
-                EndIf
-            EndIf
-
-        Case $controls[8] ; Open Settings Folder
-            _OpenSettingsFolder()
-
-        Case $controls[10] ; OK clicked in message panel
-            _OptionsHideResetConfirmPanel($controls)
-            _OptionsResetToDefaults($controls, $settingsDict)
-
-        Case $controls[11] ; Task Scan Interval changed (NEW)
-            Local $value = GUICtrlRead($controls[11])
-            If $value <> "" And IsNumber($value) Then
-                If $value >= 10000 And $value <= 3600000 Then
-                    $settingsDict.Item("MonitorTimeTasks") = String($value)
-                    ConfigSaveSettings($settingsDict)
-                Else
-                    MsgBox(48, "Invalid Value", "Task scan interval must be between 10000 and 3600000 milliseconds (10s-1hr).")
-                    Local $currentValue = $settingsDict.Exists("MonitorTimeTasks") ? $settingsDict.Item("MonitorTimeTasks") : "60000"
-                    GUICtrlSetData($controls[11], $currentValue)
-                EndIf
-            EndIf
-
-        Case $g_OptionsMsgCancel ; Cancel clicked in message panel
-            _OptionsHideResetConfirmPanel($controls)
-    EndSwitch
-EndFunc
-
-; =================================================================
-; OPTIONS TAB HELPER FUNCTIONS
-; =================================================================
-Func _OptionsLoadValues($controls, $settingsDict)
-    If Not IsObj($settingsDict) Or Not IsArray($controls) Then Return
-
-    ; Monitor Time
-    Local $monitorTime = $settingsDict.Exists("MonitorTime") ? $settingsDict.Item("MonitorTime") : "3000"
-    GUICtrlSetData($controls[0], $monitorTime)
-	Local $taskTime = $settingsDict.Exists("MonitorTimeTasks") ? $settingsDict.Item("MonitorTimeTasks") : "60000"
-    GUICtrlSetData($controls[11], $taskTime)
-    ; Clear Log on Start
-    Local $clearLog = $settingsDict.Exists("ClearLogOnStart") ? $settingsDict.Item("ClearLogOnStart") : "0"
-    GUICtrlSetState($controls[1], ($clearLog = "1") ? $GUI_CHECKED : $GUI_UNCHECKED)
-    ; Persistent Baseline
-    Local $persistentBaseline = $settingsDict.Exists("PersistentBaseline") ? $settingsDict.Item("PersistentBaseline") : "1"
-    GUICtrlSetState($controls[2], ($persistentBaseline = "1") ? $GUI_CHECKED : $GUI_UNCHECKED)
-    ; Monitor Tasks
-    Local $monitorTasks = $settingsDict.Exists("MonitorTasks") ? $settingsDict.Item("MonitorTasks") : "1"
-    GUICtrlSetState($controls[3], ($monitorTasks = "1") ? $GUI_CHECKED : $GUI_UNCHECKED)
-    ; Monitor Registry
-    Local $monitorRegistry = $settingsDict.Exists("Registry") ? $settingsDict.Item("Registry") : "1"
-    GUICtrlSetState($controls[4], ($monitorRegistry = "1") ? $GUI_CHECKED : $GUI_UNCHECKED)
-    ; Review Window Width
-    Local $reviewWidth = $settingsDict.Exists("ReviewWindowWidth") ? $settingsDict.Item("ReviewWindowWidth") : "800"
-    GUICtrlSetData($controls[6], $reviewWidth)
-    ; Review Window Height
-    Local $reviewHeight = $settingsDict.Exists("ReviewWindowHeight") ? $settingsDict.Item("ReviewWindowHeight") : "400"
-    GUICtrlSetData($controls[7], $reviewHeight)
-EndFunc
-
-Func _OptionsResetToDefaults($controls, ByRef $settingsDict)
-    ; Reset all values to defaults
-    GUICtrlSetData($controls[0], "3000")
-	GUICtrlSetData($controls[11], "60000")
-    GUICtrlSetState($controls[1], $GUI_UNCHECKED)
-    GUICtrlSetState($controls[2], $GUI_CHECKED)
-    GUICtrlSetState($controls[3], $GUI_CHECKED)
-    GUICtrlSetState($controls[4], $GUI_CHECKED)
-    GUICtrlSetData($controls[6], "800")
-    GUICtrlSetData($controls[7], "400")
-    ; Update settings dictionary
-    $settingsDict.Item("MonitorTime") = "3000"
-	$settingsDict.Item("MonitorTimeTasks") = "60000"
-    $settingsDict.Item("ClearLogOnStart") = "0"
-    $settingsDict.Item("PersistentBaseline") = "1"
-    $settingsDict.Item("MonitorTasks") = "1"
-    $settingsDict.Item("Registry") = "1"
-    $settingsDict.Item("ReviewWindowWidth") = "800"
-    $settingsDict.Item("ReviewWindowHeight") = "400"
-    ; Save to file
-    ConfigSaveSettings($settingsDict)
-    EngineLogWrite("SETTINGS", "options", "reset_defaults", "all_settings", "RESET_TO_DEFAULTS")
-EndFunc
-
-Func _OpenSettingsFolder()
-    ShellExecute(@ScriptDir & "\App")
-EndFunc
-
-; =================================================================
-; OPTIONS TAB CONFIRMATION PANEL HANDLING
-; =================================================================
-Func _OptionsShowResetConfirmPanel($controls)
-    GUICtrlSetData($controls[9], "Are you sure you want to reset all settings to default values?")
-    GUICtrlSetState($controls[9], $GUI_SHOW)
-    GUICtrlSetState($controls[10], $GUI_SHOW)
-    GUICtrlSetState($g_OptionsMsgCancel, $GUI_SHOW)
-EndFunc
-
-Func _OptionsHideResetConfirmPanel($controls)
-    GUICtrlSetState($controls[9], $GUI_HIDE)
-    GUICtrlSetState($controls[10], $GUI_HIDE)
-    GUICtrlSetState($g_OptionsMsgCancel, $GUI_HIDE)
+    _GUICtrlListView_DeleteAllItems($hListView)
+    For $i = 0 To UBound($aRows) - 1
+        Local $newIdx = _GUICtrlListView_AddItem($hListView, $aRows[$i][0])
+        For $j = 1 To $colCount - 1
+            _GUICtrlListView_AddSubItem($hListView, $newIdx, $aRows[$i][$j], $j)
+        Next
+    Next
 EndFunc
