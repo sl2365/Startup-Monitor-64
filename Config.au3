@@ -35,6 +35,7 @@ EndFunc
 Func _CreateDefaultSettings()
     Local $content = _
         "[Options]" & @CRLF & _
+		"DefaultCheckReviewItems=1" & @CRLF & _
         "ClearLogOnStart=0" & @CRLF & _
         "MonitorTime=3000" & @CRLF & _
         "MonitorTimeTasks=60000" & @CRLF & _
@@ -103,6 +104,10 @@ Func ConfigLoadSettings(ByRef $settingsDict)
         $settingsDict.Item("ReviewWindowHeight") = "400"
         $needsSave = True
     EndIf
+	If Not $settingsDict.Exists("DefaultCheckReviewItems") Then
+		$settingsDict.Item("DefaultCheckReviewItems") = "1"
+		$needsSave = True
+	EndIf
 
     ; Enforce min/max for MonitorTimeTasks
     If $settingsDict.Exists("MonitorTimeTasks") Then
@@ -126,7 +131,7 @@ Func ConfigSaveSettings($settingsDict)
         Local $value = $settingsDict.Item($key)
         ; Determine which section this key belongs to
         Switch $key
-            Case "ClearLogOnStart", "MonitorTime", "MonitorTimeTasks", "PersistentBaseline", "MonitorTasks", "Registry"
+            Case "ClearLogOnStart", "MonitorTime", "MonitorTimeTasks", "PersistentBaseline", "MonitorTasks", "Registry", "DefaultCheckReviewItems"
                 ; Enforce limits for MonitorTimeTasks before saving
                 If $key = "MonitorTimeTasks" Then
                     Local $val = Number($value)
