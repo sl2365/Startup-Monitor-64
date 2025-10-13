@@ -6,7 +6,7 @@
 #include <StaticConstants.au3>
 #include <ButtonConstants.au3>
 
-Global $g_OptionsControls[12] ; Increased size for new controls
+Global $g_OptionsControls[13] ; Increased size for new controls
 Global $g_OptionsMsgPanel = 0
 Global $g_OptionsMsgLabel = 0
 Global $g_OptionsMsgOk = 0
@@ -16,9 +16,9 @@ Global $g_OptionsMsgCancel = 0
 ; OPTIONS TAB CREATION
 ; =================================================================
 Func GUIOptionsCreate($parentGUI, $x, $y, $width, $height, ByRef $settingsDict)
-    Local $controls[12]
+    Local $controls[13]
     Local $curY = $y
-
+	
     ; Monitor Time setting
     GUICtrlCreateLabel("Monitor Interval (ms):", $x + 10, $curY + 30, 100, 20)
     $controls[0] = GUICtrlCreateInput("", $x + 140, $curY + 26, 60, 20, $ES_NUMBER)
@@ -45,26 +45,30 @@ Func GUIOptionsCreate($parentGUI, $x, $y, $width, $height, ByRef $settingsDict)
     $controls[4] = GUICtrlCreateCheckbox("Monitor registry startup locations", $x + 10, $curY + 250, 170, 20)
     GUICtrlCreateLabel("(Monitors registry keys for startup programs)", $x + 30, $curY + 270, 400, 20)
 
+	; Default to selected
+	$controls[12] = GUICtrlCreateCheckbox("Review items default to Selected", $x + 10, $curY + 300, 200, 20)
+	GUICtrlCreateLabel("(Allows the items appearing in the Review Window to be selected by default, or not.)", $x + 30, $curY + 320, 400, 20)
+
     ; Review Window Width/Height
-    GUICtrlCreateLabel("Review Window Width:", $x + 10, $curY + 300, 120, 20)
-    $controls[6] = GUICtrlCreateInput("", $x + 140, $curY + 296, 60, 20, $ES_NUMBER)
-    GUICtrlCreateLabel("Review Window Height:", $x + 10, $curY + 330, 160, 20)
-    $controls[7] = GUICtrlCreateInput("", $x + 140, $curY + 326, 60, 20, $ES_NUMBER)
+    GUICtrlCreateLabel("Review Window Width:", $x + 10, $curY + 355, 120, 20)
+    $controls[6] = GUICtrlCreateInput("", $x + 140, $curY + 351, 60, 20, $ES_NUMBER)
+    GUICtrlCreateLabel("Review Window Height:", $x + 10, $curY + 385, 160, 20)
+    $controls[7] = GUICtrlCreateInput("", $x + 140, $curY + 381, 60, 20, $ES_NUMBER)
 
     ; Reset to defaults button
-    $controls[5] = GUICtrlCreateButton("Reset to Defaults", $x + 10, $curY + 400, 100, 30)
-    $controls[8] = GUICtrlCreateButton("Settings Folder", $x + 10, $curY + 440, 100, 30)
+    $controls[5] = GUICtrlCreateButton("Reset to Defaults", $x + 10, $curY + 420, 100, 30)
+    $controls[8] = GUICtrlCreateButton("Settings Folder", $x + 10, $curY + 460, 100, 30)
 
     ; Message panel controls (hidden by default)
-    $controls[9] = GUICtrlCreateLabel("", $x + 130, $curY + 400, 250, 30, $SS_CENTER)
+    $controls[9] = GUICtrlCreateLabel("", $x + 130, $curY + 425, 250, 30, $SS_CENTER)
     GUICtrlSetColor($controls[9], 0xAA0000)
     GUICtrlSetFont($controls[9], 10, 700)
     GUICtrlSetState($controls[9], $GUI_HIDE)
-    $controls[10] = GUICtrlCreateButton("OK", $x + 190, $curY + 440, 60, 20, $BS_DEFPUSHBUTTON)
+    $controls[10] = GUICtrlCreateButton("OK", $x + 190, $curY + 465, 60, 20, $BS_DEFPUSHBUTTON)
     GUICtrlSetState($controls[10], $GUI_HIDE)
     $g_OptionsMsgPanel = $controls[9]
     $g_OptionsMsgOk = $controls[10]
-    $g_OptionsMsgCancel = GUICtrlCreateButton("Cancel", $x + 260, $curY + 440, 60, 20)
+    $g_OptionsMsgCancel = GUICtrlCreateButton("Cancel", $x + 260, $curY + 465, 60, 20)
     GUICtrlSetState($g_OptionsMsgCancel, $GUI_HIDE)
 
     ; Load current values into controls
@@ -97,6 +101,11 @@ Func GUIOptionsHandleMessage($msg, $controls, ByRef $settingsDict)
                     GUICtrlSetData($controls[0], $currentValue)
                 EndIf
             EndIf
+
+		Case $controls[12] ; Enable editing review items
+			Local $checked = (GUICtrlRead($controls[12]) = 1)
+			$settingsDict.Item("DefaultCheckReviewItems") = $checked ? "1" : "0"
+			ConfigSaveSettings($settingsDict)
 
         Case $controls[1] ; Clear Log on Start
             Local $checked = (GUICtrlRead($controls[1]) = 1)
@@ -201,10 +210,13 @@ Func _OptionsLoadValues($controls, $settingsDict)
     ; Review Window Height
     Local $reviewHeight = $settingsDict.Exists("ReviewWindowHeight") ? $settingsDict.Item("ReviewWindowHeight") : "400"
     GUICtrlSetData($controls[7], $reviewHeight)
+	Local $enableReview = $settingsDict.Exists("DefaultCheckReviewItems") ? $settingsDict.Item("DefaultCheckReviewItems") : "1"
+	GUICtrlSetState($controls[12], ($enableReview = "1") ? $GUI_CHECKED : $GUI_UNCHECKED)
 EndFunc
 
 Func _OptionsResetToDefaults($controls, ByRef $settingsDict)
     ; Reset all values to defaults
+	GUICtrlSetState($controls[12], $GUI_CHECKED)
     GUICtrlSetData($controls[0], "3000")
 	GUICtrlSetData($controls[11], "60000")
     GUICtrlSetState($controls[1], $GUI_UNCHECKED)
@@ -214,6 +226,7 @@ Func _OptionsResetToDefaults($controls, ByRef $settingsDict)
     GUICtrlSetData($controls[6], "800")
     GUICtrlSetData($controls[7], "400")
     ; Update settings dictionary
+	$settingsDict.Item("DefaultCheckReviewItems") = "1"
     $settingsDict.Item("MonitorTime") = "3000"
 	$settingsDict.Item("MonitorTimeTasks") = "60000"
     $settingsDict.Item("ClearLogOnStart") = "0"
