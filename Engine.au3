@@ -5,6 +5,7 @@
 #include "Scanners.au3"
 
 Global Const $ENGINE_LOG_FILE = @ScriptDir & "\App\Log.ini"
+Global $gCachedTasks
 
 ; =================================================================
 ; LOGGING FUNCTIONS
@@ -137,9 +138,25 @@ Func _EngineProcessItem($key, $displayName, $type, $detail, $hash, $allowedDict,
             $shouldInclude = True
             EngineLogWrite("DETECT_MODIFIED", $type, $key, $detail, "ALLOWED_ITEM_MODIFIED")
         EndIf
+    EndIf
+
+    ; PRIORITY 2: If item is DENIED, notify AND attempt auto-remove immediately.
+    ; DENIED handling: show reappeared denied items in review (default unchecked), do NOT auto-remove here
+    If $isDenied Then
+        Local $deniedHash = $deniedDict.Item($key)
+        $status = 2            ; mark as denied
+        $checked = False       ; default to "denied" (unchecked) in the review UI
+        $shouldInclude = True
+
+        If $deniedHash = $hash Then
+            EngineLogWrite("DETECT_DENIED_REAPPEARED", $type, $key, $detail, "DENIED_ITEM_PRESENT")
+        Else
+            EngineLogWrite("DETECT_RECREATED", $type, $key, $detail, "RECREATED_AFTER_DENIAL")
+        EndIf
+    EndIf
     
-    ; PRIORITY 2: Check if item is in BASELINE (skip if in baseline and hash matches)
-    ElseIf $isInBaseline Then
+    ; PRIORITY 3: Check baseline (only mark as modified if not already included above)
+    If $isInBaseline And Not $shouldInclude Then
         Local $baselineHash = $baselineDict.Item($key)
         If $baselineHash = $hash Then
             ; Item exists in baseline with same hash - ignore completely
@@ -151,19 +168,18 @@ Func _EngineProcessItem($key, $displayName, $type, $detail, $hash, $allowedDict,
             $shouldInclude = True
             EngineLogWrite("DETECT_MODIFIED", $type, $key, $detail, "BASELINE_ITEM_MODIFIED")
         EndIf
+    EndIf
     
-    ; PRIORITY 3: Everything else is NEW and should be alerted
-    Else
-        ; This is a new item that wasn't in allowed list or baseline
-        ; Check if it was previously denied (for logging purposes and default selection)
+    ; PRIORITY 4: Everything else is NEW and should be alerted (only if not already decided above)
+    If Not $shouldInclude Then
         If $isDenied Then
-            ; Item was previously denied but is back - alert and default to denied
+            ; Previously denied but not yet handled above (shouldn't usually reach here)
             $status = 0
-            $checked = False ; Default to denied since it was previously denied
+            $checked = False
             $shouldInclude = True
             EngineLogWrite("DETECT_RECREATED", $type, $key, $detail, "RECREATED_AFTER_DENIAL")
         Else
-            ; Item is completely new
+            ; New item
             $status = 0
             $checked = True ; Default to allowed for truly new items
             $shouldInclude = True
