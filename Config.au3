@@ -10,6 +10,7 @@ Global Const $CONFIG_FILE_DENIED = $CONFIG_APP_DIR & "\Denied.ini"
 Global Const $CONFIG_FILE_LOG = $CONFIG_APP_DIR & "\Log.ini"
 Global Const $CONFIG_FILE_BASE_STARTUP = $CONFIG_APP_DIR & "\BaseStartup.ini"
 Global Const $CONFIG_FILE_BASE_TASKS = $CONFIG_APP_DIR & "\BaseTasks.ini"
+Global $gCachedTasks
 
 ; =================================================================
 ; APP STRUCTURE MANAGEMENT
@@ -296,11 +297,17 @@ Func ConfigCommitReviewResults($itemsArray, ByRef $allowedDict, ByRef $deniedDic
             ; Add to denied, remove from allowed, AND remove the actual startup item
             IniWrite($CONFIG_FILE_DENIED, "Denied", $key, $hash)
             IniDelete($CONFIG_FILE_ALLOWED, "Allowed", $key)
-            $deniedDict.Item($key) = $hash
-            If $allowedDict.Exists($key) Then $allowedDict.Remove($key)
+            If IsObj($deniedDict) Then $deniedDict.Item($key) = $hash
+            If IsObj($allowedDict) And $allowedDict.Exists($key) Then $allowedDict.Remove($key)
             
             ; Remove the actual startup item from the system
             EngineRemoveStartupItem($key, $type)
+
+            ; ensure we update the in-memory task cache so deleted tasks won't be re-alerted immediately
+            Global $gCachedTasks
+            If $type = "task" And IsObj($gCachedTasks) Then
+                If $gCachedTasks.Exists($key) Then $gCachedTasks.Remove($key)
+            EndIf
         EndIf
     Next
 EndFunc
