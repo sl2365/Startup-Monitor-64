@@ -52,7 +52,7 @@ Func GUIOptionsCreate($parentGUI, $x, $y, $width, $height, ByRef $settingsDict)
     ; Review Window Width/Height
     GUICtrlCreateLabel("Review Window Width:", $x + 10, $curY + 355, 120, 20)
     $controls[6] = GUICtrlCreateInput("", $x + 140, $curY + 351, 60, 20, $ES_NUMBER)
-    GUICtrlCreateLabel("Review Window Height:", $x + 10, $curY + 385, 160, 20)
+    GUICtrlCreateLabel("Review Window Height:", $x + 10, $curY + 385, 120, 20)
     $controls[7] = GUICtrlCreateInput("", $x + 140, $curY + 381, 60, 20, $ES_NUMBER)
 
     ; Reset to defaults button
@@ -64,7 +64,7 @@ Func GUIOptionsCreate($parentGUI, $x, $y, $width, $height, ByRef $settingsDict)
     GUICtrlSetColor($controls[9], 0xAA0000)
     GUICtrlSetFont($controls[9], 10, 700)
     GUICtrlSetState($controls[9], $GUI_HIDE)
-    $controls[10] = GUICtrlCreateButton("OK", $x + 190, $curY + 465, 60, 20, $BS_DEFPUSHBUTTON)
+    $controls[10] = GUICtrlCreateButton("OK", $x + 190, $curY + 465, 60, 20)
     GUICtrlSetState($controls[10], $GUI_HIDE)
     $g_OptionsMsgPanel = $controls[9]
     $g_OptionsMsgOk = $controls[10]
