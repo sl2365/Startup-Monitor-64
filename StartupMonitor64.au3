@@ -7,7 +7,7 @@
 #AutoIt3Wrapper_icon=StartupMonitor.ico
 #AutoIt3Wrapper_Res_Fileversion_First_Increment=Y	; AutoIncrement: Before (Y); After (N) compile. Default=N
 #AutoIt3Wrapper_Res_FileVersion_AutoIncrement=Y
-#AutoIt3Wrapper_Res_Fileversion=0.0.3.128
+#AutoIt3Wrapper_Res_Fileversion=0.0.3.131
 #AutoIt3Wrapper_Res_ProductVersion=3.3.16.1
 #AutoIt3Wrapper_Res_Description=StartupMonitor64
 #AutoIt3Wrapper_Res_LegalCopyright=sl23
