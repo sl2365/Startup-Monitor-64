@@ -1,5 +1,3 @@
-; GUI_Settings.au3
-
 #include-once
 #include <GUIConstantsEx.au3>
 #include <WindowsConstants.au3>
@@ -67,6 +65,8 @@ Func GUIShowSettings(ByRef $settingsDict, ByRef $foldersDict, ByRef $regTokensDi
     Local $result = "CANCEL"
     Local $tabCount = 8 
     Local $logTabInitialized = False
+    Local $lastWidthVal = (IsObj($settingsDict) And $settingsDict.Exists("ReviewWindowWidth")) ? $settingsDict.Item("ReviewWindowWidth") : "800"
+    Local $lastHeightVal = (IsObj($settingsDict) And $settingsDict.Exists("ReviewWindowHeight")) ? $settingsDict.Item("ReviewWindowHeight") : "400"
 
     While 1
         Local $msg = GUIGetMsg()
@@ -136,6 +136,23 @@ Func GUIShowSettings(ByRef $settingsDict, ByRef $foldersDict, ByRef $regTokensDi
                         GUIAboutHandleMessage($msg, $g_TabHandles[7])
                 EndSwitch
         EndSwitch
+
+        ; Save review window width/height when edited in Options tab (auto-save on change)
+        If $currentTab = 0 And IsArray($g_TabHandles[0]) Then
+            Local $opts = $g_TabHandles[0]
+            Local $curW = GUICtrlRead($opts[6])
+            Local $curH = GUICtrlRead($opts[7])
+            If $curW <> "" And $curH <> "" Then
+                If $curW <> $lastWidthVal Or $curH <> $lastHeightVal Then
+                    If IsNumber($curW) And $curW >= 400 And $curW <= 1600 Then $settingsDict.Item("ReviewWindowWidth") = String($curW)
+                    If IsNumber($curH) And $curH >= 200 And $curH <= 900 Then $settingsDict.Item("ReviewWindowHeight") = String($curH)
+                    ConfigSaveSettings($settingsDict)
+                    $lastWidthVal = $curW
+                    $lastHeightVal = $curH
+                EndIf
+            EndIf
+        EndIf
+
         Sleep(10)
     WEnd
 
