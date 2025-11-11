@@ -39,6 +39,7 @@ EndFunc
 ; =================================================================
 ; REGISTRY SCANNING
 ; =================================================================
+; Corrected ScannersGetRegistry function (replace the existing one in Scanners.au3)
 Func ScannersGetRegistry($regTokensDict)
     Local $results[0][2] ; [key, hash]
     Local $tokenMap = _ScannersGetRegistryTokenMap()
@@ -47,22 +48,25 @@ Func ScannersGetRegistry($regTokensDict)
     
     For $token In $regTokensDict.Keys
         Local $enabled = $regTokensDict.Item($token)
-        If $enabled <> "1" Then ContinueLoop
+        ; Accept explicit "1" or the mapping string (if tokenMap was passed directly)
+        If $enabled <> "1" And ( $tokenMap.Exists($token) And $enabled <> $tokenMap.Item($token) ) Then ContinueLoop
         If Not $tokenMap.Exists($token) Then ContinueLoop
         
         Local $mapping = $tokenMap.Item($token)
-        Local $parts = StringSplit($mapping, "|", 2) ; No count element
-        If UBound($parts) < 3 Then ContinueLoop
+        ; Correct use of StringSplit: parts count is in parts[0], substrings start at index 1
+        Local $parts = StringSplit($mapping, "|")
+        If $parts[0] < 2 Then ContinueLoop ; need at least HIVE and SUBKEY
         
-        Local $hive = $parts[0]
-        Local $subkey = $parts[1]
-        Local $specificValue = $parts[2]
+        Local $hive = $parts[1]
+        Local $subkey = $parts[2]
+        Local $specificValue = ""
+        If $parts[0] >= 3 Then $specificValue = $parts[3]
         Local $fullKey = $hive & "\" & $subkey
         
         If $specificValue <> "" Then
             ; Monitor specific value only
             Local $data = RegRead($fullKey, $specificValue)
-            If Not @error Then
+            If @error = 0 Then
                 Local $regKey = $fullKey & "|" & $specificValue
                 Local $combinedData = $regKey & "|" & $data
                 Local $hash = _ScannersHashString($combinedData)
@@ -80,7 +84,8 @@ Func ScannersGetRegistry($regTokensDict)
                 If @error Then ExitLoop
                 
                 Local $data = RegRead($fullKey, $valueName)
-                If Not @error Then
+                If @error = 0 Then
+                    ; Use the actual value name (empty string means default value)
                     Local $regKey = $fullKey & "|" & $valueName
                     Local $combinedData = $regKey & "|" & $data
                     Local $hash = _ScannersHashString($combinedData)
