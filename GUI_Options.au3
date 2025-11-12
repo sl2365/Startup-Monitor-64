@@ -6,7 +6,7 @@
 #include <StaticConstants.au3>
 #include <ButtonConstants.au3>
 
-Global $g_OptionsControls[13] ; Increased size for new controls
+Global $g_OptionsControls[14] ; Increased size to include new ShowReview control at index 13
 Global $g_OptionsMsgPanel = 0
 Global $g_OptionsMsgLabel = 0
 Global $g_OptionsMsgOk = 0
@@ -16,7 +16,7 @@ Global $g_OptionsMsgCancel = 0
 ; OPTIONS TAB CREATION
 ; =================================================================
 Func GUIOptionsCreate($parentGUI, $x, $y, $width, $height, ByRef $settingsDict)
-    Local $controls[13]
+    Local $controls[14]
     Local $curY = $y
 	
     ; Monitor Time setting
@@ -24,13 +24,19 @@ Func GUIOptionsCreate($parentGUI, $x, $y, $width, $height, ByRef $settingsDict)
     $controls[0] = GUICtrlCreateInput("", $x + 140, $curY + 26, 60, 20, $ES_NUMBER)
     GUICtrlCreateLabel("Range: 1000-60000ms (1-60 sec)", $x + 220, $curY + 30, 200, 20)
 
+    ; Review Window Width/Height
+    GUICtrlCreateLabel("Review Window Width:", $x + 500, $curY + 30, 120, 20)
+    $controls[6] = GUICtrlCreateInput("", $x + 630, $curY + 26, 60, 20, $ES_NUMBER)
+    GUICtrlCreateLabel("Review Window Height:", $x + 500, $curY + 60, 120, 20)
+    $controls[7] = GUICtrlCreateInput("", $x + 630, $curY + 56, 60, 20, $ES_NUMBER)
+
     ; Task Scan Interval setting (NEW)
     GUICtrlCreateLabel("Task Scan Interval (ms):", $x + 10, $curY + 60, 130, 20)
     $controls[11] = GUICtrlCreateInput("", $x + 140, $curY + 56, 60, 20, $ES_NUMBER)
     GUICtrlCreateLabel("Range: 10000-3600000ms (10s-1hr)", $x + 220, $curY + 60, 230, 20)
 
     ; Clear Log on Start
-    $controls[1] = GUICtrlCreateCheckbox("Clear log file start", $x + 10, $curY + 100, 100, 20)
+    $controls[1] = GUICtrlCreateCheckbox("Clear log file on start", $x + 10, $curY + 100, 100, 20)
     GUICtrlCreateLabel("(Creates new log file on each start)", $x + 30, $curY + 120, 400, 20)
 
     ; Persistent Baseline
@@ -49,11 +55,9 @@ Func GUIOptionsCreate($parentGUI, $x, $y, $width, $height, ByRef $settingsDict)
 	$controls[12] = GUICtrlCreateCheckbox("Review items default to Selected", $x + 10, $curY + 300, 200, 20)
 	GUICtrlCreateLabel("(Allows the items appearing in the Review Window to be selected by default, or not.)", $x + 30, $curY + 320, 400, 20)
 
-    ; Review Window Width/Height
-    GUICtrlCreateLabel("Review Window Width:", $x + 10, $curY + 355, 120, 20)
-    $controls[6] = GUICtrlCreateInput("", $x + 140, $curY + 351, 60, 20, $ES_NUMBER)
-    GUICtrlCreateLabel("Review Window Height:", $x + 10, $curY + 385, 120, 20)
-    $controls[7] = GUICtrlCreateInput("", $x + 140, $curY + 381, 60, 20, $ES_NUMBER)
+    ; Show Review toggle (new)
+    $controls[13] = GUICtrlCreateCheckbox("Always show Review window for all new items", $x + 10, $curY + 350, 420, 20)
+    GUICtrlCreateLabel("(Unchecked: Review Window won't appear for items present in Allowed or Denied, however, items in Denied will be auto-deleted.)", $x + 30, $curY + 370, 700, 20)
 
     ; Reset to defaults button
     $controls[5] = GUICtrlCreateButton("Reset to Defaults", $x + 10, $curY + 420, 100, 30)
@@ -86,7 +90,7 @@ EndFunc
 ; OPTIONS TAB MESSAGE HANDLING
 ; =================================================================
 Func GUIOptionsHandleMessage($msg, $controls, ByRef $settingsDict)
-    If Not IsArray($controls) Or UBound($controls) < 12 Then Return
+    If Not IsArray($controls) Or UBound($controls) < 13 Then Return
 
     Switch $msg
         Case $controls[0] ; Monitor Time changed
@@ -102,7 +106,7 @@ Func GUIOptionsHandleMessage($msg, $controls, ByRef $settingsDict)
                 EndIf
             EndIf
 
-		Case $controls[12] ; Enable editing review items
+		Case $controls[12] ; Default check review items
 			Local $checked = (GUICtrlRead($controls[12]) = 1)
 			$settingsDict.Item("DefaultCheckReviewItems") = $checked ? "1" : "0"
 			ConfigSaveSettings($settingsDict)
@@ -125,6 +129,11 @@ Func GUIOptionsHandleMessage($msg, $controls, ByRef $settingsDict)
         Case $controls[4] ; Monitor Registry
             Local $checked = (GUICtrlRead($controls[4]) = 1)
             $settingsDict.Item("Registry") = $checked ? "1" : "0"
+            ConfigSaveSettings($settingsDict)
+
+        Case $controls[13] ; ShowReview checkbox (instant apply)
+            Local $checked = (GUICtrlRead($controls[13]) = 1)
+            $settingsDict.Item("ShowReview") = $checked ? "1" : "0"
             ConfigSaveSettings($settingsDict)
 
         Case $controls[5] ; Reset to Defaults Button
@@ -212,6 +221,9 @@ Func _OptionsLoadValues($controls, $settingsDict)
     GUICtrlSetData($controls[7], $reviewHeight)
 	Local $enableReview = $settingsDict.Exists("DefaultCheckReviewItems") ? $settingsDict.Item("DefaultCheckReviewItems") : "1"
 	GUICtrlSetState($controls[12], ($enableReview = "1") ? $GUI_CHECKED : $GUI_UNCHECKED)
+    ; ShowReview
+    Local $showReview = $settingsDict.Exists("ShowReview") ? $settingsDict.Item("ShowReview") : "1"
+    GUICtrlSetState($controls[13], ($showReview = "1") ? $GUI_CHECKED : $GUI_UNCHECKED)
 EndFunc
 
 Func _OptionsResetToDefaults($controls, ByRef $settingsDict)
@@ -225,6 +237,7 @@ Func _OptionsResetToDefaults($controls, ByRef $settingsDict)
     GUICtrlSetState($controls[4], $GUI_CHECKED)
     GUICtrlSetData($controls[6], "800")
     GUICtrlSetData($controls[7], "400")
+    GUICtrlSetState($controls[13], $GUI_CHECKED) ; ShowReview default = enabled
     ; Update settings dictionary
 	$settingsDict.Item("DefaultCheckReviewItems") = "1"
     $settingsDict.Item("MonitorTime") = "3000"
@@ -233,6 +246,7 @@ Func _OptionsResetToDefaults($controls, ByRef $settingsDict)
     $settingsDict.Item("PersistentBaseline") = "1"
     $settingsDict.Item("MonitorTasks") = "1"
     $settingsDict.Item("Registry") = "1"
+    $settingsDict.Item("ShowReview") = "1"
     $settingsDict.Item("ReviewWindowWidth") = "800"
     $settingsDict.Item("ReviewWindowHeight") = "400"
     ; Save to file
