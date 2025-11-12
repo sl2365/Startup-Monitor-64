@@ -1,4 +1,4 @@
-# Startup Monitor 64 (AutoIt)
+# Startup Monitor (AutoIt)
 
 ## Overview
 
@@ -63,6 +63,7 @@ All files are created in:
      - **UNCHECKED**: Item will be added to Denied.ini (blocked/deleted)
    - Denied items are deleted after a single confirmation message box.
    - Export List: This exports a full list of items shown in the Review GUI.
+   - NOTE: This window is only displayed depending on the setting: Always show review window. see below.
 
 4. **Tray Menu Functions**
    - Open settings
@@ -94,18 +95,19 @@ The Settings GUI features several tabs that allow for detailed configuration and
 
 ### **1. Options Tab**
 
-| Option                            | Description                                                                          | Values / Range                |
-|-----------------------------------|--------------------------------------------------------------------------------------|-------------------------------|
-| **Monitor Interval**              | Controls how often the application performs monitoring Scans.                        | 1000–60000 ms (1–60 sec)      |
-| **Tasks Scan Interval**           | Controls how often the application performs monitoring Tasks.                        | 10000–3600000 ms (10sec–1hr)  |
-| **Clear Log File Start**          | Whether to create a new log file on each startup.                                    | Checkbox (On/Off)             |
-| **Persistent Baseline**           | Creates a baseline of existing startup items on first run to reduce false alerts.    | Checkbox (On/Off)             |
-| **Monitor Scheduled Tasks**       | When enabled, scheduled tasks are included in the monitoring process.                | Checkbox (On/Off)             |
-| **Monitor Registry Startup**      | Monitors registry keys for startup programs. Disable for folder monitoring only.     | Checkbox (On/Off)             |
-| **Review Window Width**           | Sets the width of the review window.                                                 | 400–1600 pixels               |
-| **Review Window Height**          | Sets the height of the review window.                                                | 200–900 pixels                |
-| **Reset to Defaults**             | Restores all settings to their default values.                                       | Button                        |
-| **Open Settings Folder**          | Opens the folder containing application settings for manual review or backup.        | Button                        |
+| Option                            | Description                                                                          									| Values / Range                |
+|-----------------------------------|-----------------------------------------------------------------------------------------------------------------------|-------------------------------|
+| **Monitor Interval**              | Controls how often the application performs monitoring Scans.                        									| 1000–60000 ms (1–60 sec)      |
+| **Tasks Scan Interval**           | Controls how often the application performs monitoring Tasks.                        									| 10000–3600000 ms (10sec–1hr)  |
+| **Clear Log File Start**          | Whether to create a new log file on each startup.                                    									| Checkbox (On/Off)             |
+| **Persistent Baseline**           | Creates a baseline of existing startup items on first run to reduce false alerts.    									| Checkbox (On/Off)             |
+| **Monitor Scheduled Tasks**       | When enabled, scheduled tasks are included in the monitoring process.                									| Checkbox (On/Off)             |
+| **Monitor Registry Startup**      | Monitors registry keys for startup programs. Disable for folder monitoring only.     									| Checkbox (On/Off)             |
+| **Always show review window**     | CHECKED: Displays whenever new items detected. UNCHECKED: Only displays if an item isn't in Allowed or Denied list.	| Checkbox (On/Off)             |
+| **Review Window Width**           | Sets the width of the review window.                                                 									| 400–1600 pixels               |
+| **Review Window Height**          | Sets the height of the review window.                                                									| 200–900 pixels                |
+| **Reset to Defaults**             | Restores all settings to their default values.                                       									| Button                        |
+| **Open Settings Folder**          | Opens the folder containing application settings for manual review or backup.        									| Button                        |
 NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab. These require clicking Apply, this will then save and exit.
 ---
 
