@@ -4,7 +4,7 @@
 #include <GUIConstantsEx.au3>
 #include <ListViewConstants.au3>
 #include <GuiListView.au3>
-#include <Clipboard.au3> ; for ClipPut
+#include <Clipboard.au3>
 
 Global $g_DeniedListView = 0
 Global $g_DeniedListView_Handle = 0
