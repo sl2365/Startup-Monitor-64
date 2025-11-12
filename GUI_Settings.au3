@@ -1,3 +1,5 @@
+; GUI_Settings.au3
+
 #include-once
 #include <GUIConstantsEx.au3>
 #include <WindowsConstants.au3>
@@ -201,6 +203,7 @@ EndFunc
 
 Func SaveOptionsTabSettings($settingsDict, $optionsControls)
     $settingsDict.Item("MonitorTime") = GUICtrlRead($optionsControls[0])
+    $settingsDict.Item("MonitorTimeTasks") = GUICtrlRead($optionsControls[11]) ; correct index for Task Scan Interval input
     $settingsDict.Item("ReviewWindowWidth") = GUICtrlRead($optionsControls[6])
     $settingsDict.Item("ReviewWindowHeight") = GUICtrlRead($optionsControls[7])
     ConfigSaveSettings($settingsDict)
