@@ -43,6 +43,7 @@ Func _CreateDefaultSettings()
         "PersistentBaseline=1" & @CRLF & _
         "MonitorTasks=1" & @CRLF & _
         "Registry=1" & @CRLF & _
+        "ShowReview=1" & @CRLF & _
         @CRLF & _
         "[GUI]" & @CRLF & _
         "ReviewWindowWidth=500" & @CRLF & _
@@ -109,6 +110,11 @@ Func ConfigLoadSettings(ByRef $settingsDict)
 		$settingsDict.Item("DefaultCheckReviewItems") = "1"
 		$needsSave = True
 	EndIf
+    ; New setting: ShowReview (1 = always show review, 0 = skip review when item exists)
+    If Not $settingsDict.Exists("ShowReview") Then
+        $settingsDict.Item("ShowReview") = "1"
+        $needsSave = True
+    EndIf
 
     ; Enforce min/max for MonitorTimeTasks
     If $settingsDict.Exists("MonitorTimeTasks") Then
@@ -132,7 +138,7 @@ Func ConfigSaveSettings($settingsDict)
         Local $value = $settingsDict.Item($key)
         ; Determine which section this key belongs to
         Switch $key
-            Case "ClearLogOnStart", "MonitorTime", "MonitorTimeTasks", "PersistentBaseline", "MonitorTasks", "Registry", "DefaultCheckReviewItems"
+            Case "ClearLogOnStart", "MonitorTime", "MonitorTimeTasks", "PersistentBaseline", "MonitorTasks", "Registry", "DefaultCheckReviewItems", "ShowReview"
                 ; Enforce limits for MonitorTimeTasks before saving
                 If $key = "MonitorTimeTasks" Then
                     Local $val = Number($value)
