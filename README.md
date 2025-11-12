@@ -1,4 +1,4 @@
-# Startup Monitor (AutoIt)
+# Startup Monitor 64 (AutoIt)
 
 ## Overview
 
