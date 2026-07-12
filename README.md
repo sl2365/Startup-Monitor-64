@@ -25,7 +25,9 @@ The app can be used to monitor any custom location added by the user, so this co
 - **Logging**:
   - All actions are logged to `Log.ini`.
 - **Tray Menu**:
-  - Open settings
+  - Settings
+  - Open App Folder
+  - Pause Monitoring
   - Exit
 
 ---
@@ -66,7 +68,9 @@ All files are created in:
    - NOTE: This window is only displayed depending on the setting: Always show review window. see below.
 
 4. **Tray Menu Functions**
-   - Open settings
+   - Settings
+   - Open App Folder
+   - Pause Monitoring
    - Exit
 
 ---
@@ -108,7 +112,7 @@ The Settings GUI features several tabs that allow for detailed configuration and
 | **Review Window Height**          | Sets the height of the review window.                                                									| 200–900 pixels                |
 | **Reset to Defaults**             | Restores all settings to their default values.                                       									| Button                        |
 | **Open Settings Folder**          | Opens the folder containing application settings for manual review or backup.        									| Button                        |
-NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab. These require clicking Apply, this will then save and exit.
+NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab, also the Reset to Defaults. These require clicking Apply, this will then save and exit. Click Cancel to ignore these changes.
 ---
 
 ### **2. Locations Tab**
