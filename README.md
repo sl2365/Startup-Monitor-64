@@ -1,10 +1,10 @@
-# Startup Monitor 64 (AutoIt)
+# Startup Monitor 64
 
 ## Overview
 
 This Windows tray application monitors system startup locations, scheduled tasks, and registry entries for changes or new items. It alerts the user to new startup entries, lets the user approve or deny them, and provides options for logging and deletion. All configuration and log files are stored in a dedicated `App` folder within the application's directory.
 
-The app can be used to monitor any custom location added by the user, so this could serve as an app monitor, checking for changes in folders or registry locations.
+The app can be used to monitor any custom location added by the user, so this could serve as an app monitor, checking for realtime changes in folders or registry locations.
 
 ---
 
@@ -20,7 +20,7 @@ The app can be used to monitor any custom location added by the user, so this co
   - User can allow (approve) or deny (block/delete) new items.
   - Denied items are deleted after confirmation.
 - **Persistence**:
-  - Baseline snapshot on first run (never updated except on reset).
+  - Baseline snapshot on first run (never updated except on settings reset).
   - Tracks Allowed and Denied items separately for user decisions.
 - **Logging**:
   - All actions are logged to `Log.ini`.
@@ -63,15 +63,17 @@ All files are created in:
    - New or changed items open a review dialog with checkboxes:
      - **CHECKED**: Item will be added to Allowed.ini (approved)
      - **UNCHECKED**: Item will be added to Denied.ini (blocked/deleted)
-   - Denied items are deleted after a single confirmation message box.
+   - Denied items are deleted on clicking Apply.
    - Export List: This exports a full list of items shown in the Review GUI.
    - NOTE: This window is only displayed depending on the setting: Always show review window. see below.
 
 4. **Tray Menu Functions**
-   - Settings
-   - Open App Folder
-   - Pause Monitoring
-   - Exit
+   - Left-click opens settings window
+   - Right-click shows context menu:
+     - Settings
+     - Open App Folder
+     - Pause Monitoring
+     - Exit
 
 ---
 
@@ -81,27 +83,15 @@ All files are created in:
 
 # Settings GUI – Options & Functionality
 
-Edit `Settings.ini` to adjust app behavior, or use the Settings window which covers all functionality. Just click the tray icon and select Settings.
-
-## **Settings Overview**
-## **Main Settings Options**
+The Settings GUI features several tabs that allow for detailed configuration and management of monitored startup items. Use the Settings window which covers all functionality. Just left-click the tray icon to open Settings. Here, you can configure monitoring behaviour, baseline creation, logging preferences, review window size, and manage advanced lists such as Locations, Allowed, and Denied.
 
 ---
-
-The Settings GUI allows users to configure monitoring behavior, baseline creation, logging preferences, review window layout, and manage advanced lists such as Locations, Allowed, and Denied.
-
----
-
-## **Main Options**
-The Settings GUI features several tabs that allow for detailed configuration and management of monitored startup items.
-
-## **Tabs & Advanced Lists**
 
 ### **1. Options Tab**
 
 | Option                            | Description                                                                          									| Values / Range                |
-|-----------------------------------|-----------------------------------------------------------------------------------------------------------------------|-------------------------------|
-| **Monitor Interval**              | Controls how often the application performs monitoring Scans.                        									| 1000–60000 ms (1–60 sec)      |
+|-----------------------------------|------------------------------------------------------------------------|-------------------------------|
+| **Monitor Interval**              | Set scan interval of Startup locations. | 1000–60000 ms (1–60 sec) |
 | **Tasks Scan Interval**           | Controls how often the application performs monitoring Tasks.                        									| 10000–3600000 ms (10sec–1hr)  |
 | **Clear Log File Start**          | Whether to create a new log file on each startup.                                    									| Checkbox (On/Off)             |
 | **Persistent Baseline**           | Creates a baseline of existing startup items on first run to reduce false alerts.    									| Checkbox (On/Off)             |
@@ -113,6 +103,7 @@ The Settings GUI features several tabs that allow for detailed configuration and
 | **Reset to Defaults**             | Restores all settings to their default values.                                       									| Button                        |
 | **Open Settings Folder**          | Opens the folder containing application settings for manual review or backup.        									| Button                        |
 NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab, also the Reset to Defaults. These require clicking Apply, this will then save and exit. Click Cancel to ignore these changes.
+
 ---
 
 ### **2. Locations Tab**
@@ -231,9 +222,11 @@ For further support or questions, contact the repository maintainer, preferably 
 
 ## Building & Running
 
-1. Requires [AutoIt](https://www.autoitscript.com/site/autoit/) v3.3.16.1 (x64 only).
-2. Place all `.au3` files in the same directory.
-3. Run `StartupMonitor.au3`.
+1. Requires [python-3.10.9-embed-amd64](https://www.python.org/downloads/windows/) (x64 only).
+2. Extract Source files and open build_SM64.bat.
+3. Change this line to show the relative or absolute path to the folder containg python.exe:
+   set "TOOLS_DIR=%PROJECT_DIR%..\_Tools"
+4. Run build_SM64.bat to create the exe.
 
 ---
 
