@@ -220,7 +220,7 @@ Additional tabs for advanced settings, such as:
 
 - Invalid values prompt warnings and revert to previous/default settings.
 - All changes are saved automatically unless otherwise specified.
-- Tip: To reduce repeat notification of items already denied but that continue to reoccur, uncheck the box for "Review denied items again".
+- Tip: To reduce repeat notification of items already denied but that continue to reoccur, uncheck the box for `Review denied items again`.
 
 ---
 
@@ -230,11 +230,11 @@ For further support or questions, contact the repository maintainer, preferably 
 
 ## Building & Running
 
-1. Requires [python-3.10.9-embed-amd64](https://www.python.org/downloads/windows/) (x64 only).
+1. Requires [python-3.10.9-embed-amd64](https://www.python.org/downloads/windows/).
 2. Extract Source files and open `build_SM64.bat`.
 3. Change this line to show the relative or absolute path to the folder containg python.exe:
    set `TOOLS_DIR=%PROJECT_DIR%..\_Tools`
-4. Run build_SM64.bat to create the exe.
+4. Run `build_SM64.bat` to create the exe.
 
 ---
 
