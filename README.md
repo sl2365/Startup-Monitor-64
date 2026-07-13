@@ -115,15 +115,17 @@ The Settings GUI features several tabs that allow for detailed configuration and
  
 Manage the startup locations that are monitored for changes. These locations typically include registry keys, file paths, and scheduled tasks.
 
-- **How to Use:**
-**List View:** See all locations currently being monitored. Use checkboxes to enable/disable that item. Changes saved immediately.
+**How to Use:**
+
+- **List View:** See all locations currently being monitored. Use checkboxes to enable/disable that item. Changes saved immediately.
 
 - **Context Menu:** Right click the list view to access options.
   - **Edit:** Modify an existing location's settings. Right Click a list view item, select Edit, then the edit field appears below. Make your changes and click the Edit button to save.
   - **Remove:** Remove a location if you no longer wish to monitor it. A confirmation message appears at the bottom of the window with OK/Cancel buttons.
-  - **Add Registry:** Add a new registry startup location to monitor. Use the "Open RegEdit" from the context menu, then use RegEdit to brwose to your location. Copy the desired path into the edit field, then click "Add Path" button to add to the list.
+  - **Refresh:** Likely not necessary, added to facilitate refreshing the view in case auto-refresh fails.
   - **Add Folder:** Browse to a folder and add it to your monitoring list.
-
+  - **Add Registry Path:** Add a new registry startup location to monitor. Use the "Open RegEdit" from the context menu, then use RegEdit to browse to your location. Copy the desired path into the edit field, then click "Add Path" button to add to the list.
+  - **Open RegEdit:** Use this to locate registry locations you want to add as a monitored location.
 ---
 
 - **Default Locations:**
@@ -156,9 +158,11 @@ HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager
 
 ### **3. Allowed Tab**
 
-- **Purpose:**  
-  Manage the list of startup items that are explicitly allowed. Items in this list will not trigger alerts or warnings.
-- **How to Use:**
+**Purpose:**
+
+Manage the list of startup items that are explicitly allowed. Items in this list will not trigger alerts or warnings.
+
+**How to Use:**
 - **Context Menu**
   - **Remove:** Remove items that are no longer trusted. Select item in the list view, click "Remove". Review the confirmation at the bottom of the window and select OK/Cancel as desired.
   - **Refresh:** Refreshes list. Unlikely to be required as changes are applied immediately, but, just in case!
@@ -170,12 +174,14 @@ HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager
 
 ### **4. Denied Tab**
 
-- **Purpose:**  
-  Manage the list of startup items that are explicitly denied. Any item matching entries in this list will trigger alerts and may be blocked.
-- **How to Use:**  
+**Purpose:**
+
+Manage the list of startup items that are explicitly denied. Any item matching entries in this list will trigger alerts and may be blocked.
+
+**How to Use:**  
 - **Context Menu**
   - **Remove:** Remove entries if a program is no longer considered a threat. Select item in the list view, click "Remove". Review the confirmation at the bottom of the window and select OK/Cancel as desired.
-  - **Refresh:** Refreshes list. Unlikely to be required as changes are applied immediately, but, just in case!
+  - **Refresh:** Refreshes list. Unlikely to be required as changes are applied immediately, again, just in case!
   - **CopyPath:** Copies the full path of selected item.
 - **Use Case:**  
   For known threats, unwanted software, or items you want to prevent from running at startup.
@@ -194,7 +200,7 @@ Additional tabs for advanced settings, such as:
 ## **Managing Tabs Effectively**
 
 - **Use Allowed and Denied Tabs** to fine-tune which startup items are permitted or blocked. For example if a review was accidentally accepted or denied, you can amend here.
-- **Review Baseline** periodically to ensure new legitimate items are included, and old ones are removed.
+- **Review Baseline** periodically to ensure only legitimate items are included.
 - **Consult Log Tab** for troubleshooting or audit purposes.
 
 ---
@@ -202,19 +208,19 @@ Additional tabs for advanced settings, such as:
 ## **Typical Usage Flow**
 
 1. **Configure monitoring frequency and targets** in Main Settings.
-2. **Review Locations Tab**—add or remove monitored areas.
+2. **Review Locations Tab** — enable/disable or add/remove monitored areas.
 3. **Populate Allowed Tab** with trusted items to reduce unnecessary alerts.
 4. **Populate Denied Tab** with unwanted or suspicious items for proactive blocking.
 5. **Check Baseline and Log Tabs** for additional control and troubleshooting.
-6. **Save and exit**—settings take effect immediately.
+6. **Save and exit** — settings take effect immediately.
 
 ---
 
 ## **Notes**
 
 - Invalid values prompt warnings and revert to previous/default settings.
-- The GUI is fixed-size and cannot be resized by dragging.
 - All changes are saved automatically unless otherwise specified.
+- Tip: To reduce repeat notification of items already denied but that continue to reoccur, uncheck the box for "Review denied items again".
 
 ---
 
@@ -229,14 +235,6 @@ For further support or questions, contact the repository maintainer, preferably 
 3. Change this line to show the relative or absolute path to the folder containg python.exe:
    set "TOOLS_DIR=%PROJECT_DIR%..\_Tools"
 4. Run build_SM64.bat to create the exe.
-
----
-
-## Maintenance & Expansion
-
-- Modular file structure for easy maintenance and extension.
-- Add new modules or expand registry/task support as needed.
-- All user settings and logs are kept within the `App` folder for portability.
 
 ---
 
