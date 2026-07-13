@@ -224,7 +224,7 @@ Additional tabs for advanced settings, such as:
 
 ---
 
-For further support or questions, contact the repository maintainer, preferably at: https://www.portablefreeware.com/forums/viewtopic.php?t=26600&start=15.
+For further support or questions, contact me, preferably on the StartupMonitor forum at [PortableFreeware.com](https://www.portablefreeware.com/forums/viewtopic.php?t=26600&start=15).
 
 ---
 
