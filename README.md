@@ -89,8 +89,8 @@ The Settings GUI features several tabs that allow for detailed configuration and
 
 ### **1. Options Tab**
 
-| Option                            | Description                                                                          									| Values / Range                |
-|-----------------------------------|------------------------------------------------------------------------|-------------------------------|
+| Option | Description | Values / Range |
+|---|---|---|
 | **Monitor Interval**              | Set scan interval of Startup locations. | 1000–60000 ms (1–60 sec) |
 | **Tasks Scan Interval**           | Controls how often the application performs monitoring Tasks.                        									| 10000–3600000 ms (10sec–1hr)  |
 | **Clear Log File Start**          | Whether to create a new log file on each startup.                                    									| Checkbox (On/Off)             |
