@@ -91,17 +91,21 @@ The Settings GUI features several tabs that allow for detailed configuration and
 
 | Option | Description | Values / Range |
 |---|---|---|
-| **Monitor Interval**              | Set scan interval of Startup locations. | 1000–60000 ms (1–60 sec) |
-| **Tasks Scan Interval**           | Controls how often the application performs monitoring Tasks.                        									| 10000–3600000 ms (10sec–1hr)  |
-| **Clear Log File Start**          | Whether to create a new log file on each startup.                                    									| Checkbox (On/Off)             |
-| **Persistent Baseline**           | Creates a baseline of existing startup items on first run to reduce false alerts.    									| Checkbox (On/Off)             |
-| **Monitor Scheduled Tasks**       | When enabled, scheduled tasks are included in the monitoring process.                									| Checkbox (On/Off)             |
-| **Monitor Registry Startup**      | Monitors registry keys for startup programs. Disable for folder monitoring only.     									| Checkbox (On/Off)             |
-| **Always show review window**     | CHECKED: Displays whenever new items detected. UNCHECKED: Only displays if an item isn't in Allowed or Denied list.	| Checkbox (On/Off)             |
-| **Review Window Width**           | Sets the width of the review window.                                                 									| 400–1600 pixels               |
-| **Review Window Height**          | Sets the height of the review window.                                                									| 200–900 pixels                |
-| **Reset to Defaults**             | Restores all settings to their default values.                                       									| Button                        |
-| **Open Settings Folder**          | Opens the folder containing application settings for manual review or backup.        									| Button                        |
+| **Monitor Interval**           | Set scan interval of Startup locations. | 1000–60000 ms (1–60 sec) |
+| **Tasks Scan Interval**        | Set scan interval of Scheduled Tasks. | 10000–3600000 ms (10sec–1hr) |
+| **Review Window Width**        | Sets the width of the review window. | 400–1600 pixels |
+| **Review Window Height**       | Sets the height of the review window. | 200–900 pixels |
+| **Clear Log on Start**         | Create a new log file on each startup. | (On/Off) |
+| **Create Persistent Baseline** | Creates a baseline of existing startup items on first run to reduce false alerts. | (On/Off) |
+| **Monitor Scheduled Tasks**    | When enabled, scheduled tasks are included in the monitoring process. | (On/Off) |
+| **Monitor Registry Locations** | Monitors registry keys for startup programs. Disable for folder monitoring only. | (On/Off) |
+| **Review items selected by default** | Detected items checkboxes are auto checked, or not. | (On/Off) |
+| **Review denied items again**  | CHECKED: Displays whenever new items detected. UNCHECKED: Only displays if an item isn't in Allowed or Denied list.	| (On/Off) |
+| **Theme**                      | Sets the skin theme. | Light, Dark, System |
+| **Reset to Defaults**          | Restores all settings to their default values. | Button |
+| **Settings Folder**            | Opens application settings folder for manual review or backup. | Button |
+| **Pause Monitoring**           | Works in tandem with Tray Menu to pause the motioring of all locations/tasks. | (On/Off) |
+
 NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab, also the Reset to Defaults. These require clicking Apply, this will then save and exit. Click Cancel to ignore these changes.
 
 ---
