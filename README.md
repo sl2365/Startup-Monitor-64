@@ -231,9 +231,9 @@ For further support or questions, contact the repository maintainer, preferably 
 ## Building & Running
 
 1. Requires [python-3.10.9-embed-amd64](https://www.python.org/downloads/windows/) (x64 only).
-2. Extract Source files and open build_SM64.bat.
+2. Extract Source files and open `build_SM64.bat`.
 3. Change this line to show the relative or absolute path to the folder containg python.exe:
-   set "TOOLS_DIR=%PROJECT_DIR%..\_Tools"
+   set `TOOLS_DIR=%PROJECT_DIR%..\_Tools`
 4. Run build_SM64.bat to create the exe.
 
 ---
