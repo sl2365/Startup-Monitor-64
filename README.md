@@ -65,7 +65,7 @@ All files are created in:
      - **UNCHECKED**: Item will be added to Denied.ini (blocked/deleted)
    - Denied items are deleted on clicking Apply.
    - Export List: This exports a full list of items shown in the Review GUI.
-   - NOTE: This window is only displayed depending on the setting: Always show review window. see below.
+   - NOTE: This window is only displayed depending on the setting: Review denied items again. see below.
 
 4. **Tray Menu Functions**
    - Left-click opens settings window
