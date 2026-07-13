@@ -106,27 +106,24 @@ The Settings GUI features several tabs that allow for detailed configuration and
 | **Settings Folder**            | Opens application settings folder for manual review or backup. | Button |
 | **Pause Monitoring**           | Works in tandem with Tray Menu to pause the motioring of all locations/tasks. | (On/Off) |
 
-NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab, also the Reset to Defaults. These require clicking Apply, this will then save and exit. Click Cancel to ignore these changes.
+NOTE: Please be aware that all settings are saved immediately. The only things that aren't are changes to the fields on the Options tab and Reset to Defaults. These require clicking Apply, this will then save and exit. Click Cancel to ignore these changes.
 
 ---
 
 ### **2. Locations Tab**
-- **Use Locations Tab** to tailor what areas of the system are monitored—add, remove, or edit to suit your needs. You can use this to monitor any folder or registry key for changes, other than startup.
+- **Use Locations Tab** to tailor what areas of the system are monitored. Add, remove, or edit to suit your needs. You can use this to monitor any folder or registry key for changes, other than startup.
 
 - **Purpose:**  
   Manage the startup locations that are monitored for changes. These locations typically include registry keys, file paths, and scheduled tasks.
 - **How to Use:**
+- **List View:** See all locations currently being monitored. Use checkboxes to enable/disable that item. Changes saved immediately.
 - **Context Menu:** Right click the list view to access options.
-  - **List View:** See all locations currently being monitored. Use checkboxes to enable/disable that item. Changes saved immediately.
-  - **Remove:** Remove a location if you do not wish to monitor it. A confirmation message appears at the bottom of the window with OK/Cancel buttons.
   - **Edit:** Modify an existing location's settings. Right Click a list view item, select Edit, then the edit field appears below. Make your changes and click the Edit button to save.
+  - **Remove:** Remove a location if you no longer wish to monitor it. A confirmation message appears at the bottom of the window with OK/Cancel buttons.
   - **Add Registry:** Add a new registry startup location to monitor. Use the "Open RegEdit" from the context menu, then use RegEdit to brwose to your location. Copy the desired path into the edit field, then click "Add Path" button to add to the list.
   - **Add Folder:** Browse to a folder and add it to your monitoring list.
-  
-- **Typical Locations:**  
-  - Registry keys like `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`
-  - Startup folders
-  - Windows Scheduled Tasks
+
+---
 
 - **Default Locations:**
 ```
