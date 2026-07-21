@@ -2,7 +2,7 @@
 
 ## Overview
 
-This Windows tray application monitors system startup locations, scheduled tasks, and registry entries for changes or new items. It alerts the user to new startup entries, lets the user approve or deny them, and provides options for logging and deletion. All configuration and log files are stored in a dedicated `App` folder within the application's directory.
+This Windows tray application monitors system startup locations, scheduled tasks, and registry entries for changes or new items. It alerts the user to new startup entries, lets the user approve or deny them, and provides options for logging and deletion. All configuration and log files are stored in a dedicated `App` folder within the application's directory, making it fully portable.
 
 The app can be used to monitor any custom location added by the user, so this could serve as an app monitor, checking for realtime changes in folders or registry locations.
 
