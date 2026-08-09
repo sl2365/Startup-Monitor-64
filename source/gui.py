@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QCheckBox,
+    QComboBox,
     QDialog,
     QFileDialog,
     QGridLayout,
@@ -51,7 +52,16 @@ from config_store import (
     ConfigStore,
     Paths,
 )
-from engine import MonitorEngine, ReviewItem
+from engine import (
+    MonitorEngine,
+    ReviewItem,
+    RULE_FILE_NAME,
+    RULE_REG_EXACT,
+    RULE_REG_PREFIX,
+    RULE_TASK_EXACT,
+    RULE_TASK_PREFIX,
+    RULE_VALUE,
+)
 
 
 NUMERIC_OPTIONS = (
@@ -1055,8 +1065,18 @@ class SettingsWindow(QDialog):
     @staticmethod
     def _create_remove_button_row(
         remove_callback: Callable[[], None],
+        add_callback: Optional[
+            Callable[[], None]
+        ] = None,
     ) -> QHBoxLayout:
         buttons = QHBoxLayout()
+
+        if add_callback is not None:
+            add_button = QPushButton("Add")
+            add_button.clicked.connect(
+                add_callback
+            )
+            buttons.addWidget(add_button)
 
         remove_button = QPushButton("Remove")
         remove_button.clicked.connect(
@@ -1070,6 +1090,7 @@ class SettingsWindow(QDialog):
 
     def _create_decision_tab(
         self,
+        add_callback: Callable[[], None],
         remove_callback: Callable[[], None],
         confirm_callback: Callable[[], None],
         cancel_callback: Callable[[], None],
@@ -1110,7 +1131,8 @@ class SettingsWindow(QDialog):
         layout.addWidget(table)
         layout.addLayout(
             self._create_remove_button_row(
-                remove_callback
+                remove_callback,
+                add_callback,
             )
         )
 
@@ -1129,6 +1151,514 @@ class SettingsWindow(QDialog):
             confirmation_label,
         )
 
+    def _add_decision_rule(
+        self,
+        list_name: str,
+        values: Dict[str, str],
+        populate_callback: Callable[[], None],
+        log_action: str,
+    ) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle(
+            f"Add {list_name} Rule"
+        )
+        dialog.setMinimumWidth(620)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(12)
+
+        warning = QLabel(
+            "<b>WARNING:</b> Rules apply automatically to "
+            "future detections.<br><br>"
+            "Allowed rules can suppress security review of "
+            "matching items. Denied rules can cause matching "
+            "items to be removed depending on your Denied "
+            "notification and Review settings.<br><br>"
+            "Only create a rule when you understand exactly "
+            "what it will match."
+        )
+        warning.setWordWrap(True)
+        warning.setStyleSheet(
+            "QLabel {"
+            "background-color: #fff3cd;"
+            "color: #664d03;"
+            "border: 1px solid #ffecb5;"
+            "border-radius: 4px;"
+            "padding: 10px;"
+            "}"
+        )
+        layout.addWidget(warning)
+
+        type_label = QLabel("Rule type:")
+        layout.addWidget(type_label)
+
+        rule_type = QComboBox()
+        rule_type.addItems(
+            [
+                "File name equals",
+                "Registry value equals",
+                "Registry value name starts with",
+                "Scheduled task name equals",
+                "Scheduled task name starts with",
+            ]
+        )
+        layout.addWidget(rule_type)
+
+        description = QLabel()
+        description.setWordWrap(True)
+        layout.addWidget(description)
+
+        field_layout = QGridLayout()
+
+        primary_label = QLabel()
+        primary_edit = QLineEdit()
+
+        secondary_label = QLabel()
+        secondary_edit = QLineEdit()
+
+        secondary_label.setMinimumHeight(
+            primary_edit.sizeHint().height()
+        )
+        secondary_edit.setMinimumHeight(
+            primary_edit.sizeHint().height()
+        )
+
+        field_layout.addWidget(
+            primary_label,
+            0,
+            0,
+        )
+        field_layout.addWidget(
+            primary_edit,
+            0,
+            1,
+        )
+        field_layout.addWidget(
+            secondary_label,
+            1,
+            0,
+        )
+        field_layout.addWidget(
+            secondary_edit,
+            1,
+            1,
+        )
+
+        field_layout.setRowMinimumHeight(
+            1,
+            primary_edit.sizeHint().height(),
+        )
+
+        field_layout.setColumnStretch(
+            1,
+            1,
+        )
+
+        layout.addLayout(field_layout)
+
+        example = QLabel()
+        example.setWordWrap(True)
+        example.setStyleSheet(
+            "QLabel {"
+            "color: palette(text);"
+            "font-size: 9pt;"
+            "margin-top: 4px;"
+            "}"
+        )
+        layout.addWidget(example)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+
+        cancel_button = QPushButton("Cancel")
+        add_button = QPushButton("Add")
+
+        buttons.addWidget(cancel_button)
+        buttons.addWidget(add_button)
+
+        layout.addLayout(buttons)
+
+        def update_rule_fields() -> None:
+            selected = rule_type.currentText()
+
+            primary_edit.clear()
+            secondary_edit.clear()
+
+            if selected == "File name equals":
+                description.setText(
+                    "Matches files only. The filename must "
+                    "match exactly, although matching is not "
+                    "case-sensitive."
+                )
+                primary_label.setText(
+                    "Exact filename:"
+                )
+                primary_edit.setPlaceholderText(
+                    "Dropbox.exe"
+                )
+
+                secondary_label.setText("")
+                secondary_edit.clear()
+                secondary_edit.setPlaceholderText("")
+                secondary_edit.setEnabled(False)
+
+                example.setText(
+                    "Example: Dropbox.exe\n"
+                    "Does not match DropboxHelper.exe or "
+                    "MyDropbox.exe."
+                )
+
+            elif selected == "Registry value equals":
+                description.setText(
+                    "Matches one exact registry value inside "
+                    "one exact registry key. Changes to that "
+                    "value's data will still match this rule."
+                )
+                primary_label.setText(
+                    "Registry key:"
+                )
+                primary_edit.setPlaceholderText(
+                    "HKLM\\System\\CurrentControlSet\\"
+                    "Control\\Session Manager"
+                )
+
+                secondary_label.setText(
+                    "Exact value name:"
+                )
+                secondary_edit.setPlaceholderText(
+                    "PendingFileRenameOperations"
+                )
+                secondary_edit.setEnabled(True)
+
+                example.setText(
+                    "Recommended for a known registry value "
+                    "whose contents legitimately change."
+                )
+
+            elif (
+                selected
+                == "Registry value name starts with"
+            ):
+                description.setText(
+                    "Matches registry value names beginning "
+                    "with the specified text, but ONLY inside "
+                    "the exact registry key entered below."
+                )
+                primary_label.setText(
+                    "Registry key:"
+                )
+                primary_edit.setPlaceholderText(
+                    "HKLM\\Software\\Microsoft\\Windows\\"
+                    "CurrentVersion\\RunOnce"
+                )
+
+                secondary_label.setText(
+                    "Value name starts with:"
+                )
+                secondary_edit.setPlaceholderText(
+                    "msedge_cleanup_"
+                )
+                secondary_edit.setEnabled(True)
+
+                example.setText(
+                    "Example: msedge_cleanup_ matches changing "
+                    "Edge cleanup value names only within the "
+                    "registry key specified above."
+                )
+
+            elif (
+                selected
+                == "Scheduled task name equals"
+            ):
+                description.setText(
+                    "Matches one exact scheduled-task name."
+                )
+                primary_label.setText(
+                    "Exact task name:"
+                )
+                primary_edit.setPlaceholderText(
+                    "\\Microsoft\\Windows\\ExampleTask"
+                )
+
+                secondary_label.setText("")
+                secondary_edit.clear()
+                secondary_edit.setPlaceholderText("")
+                secondary_edit.setEnabled(False)
+
+                example.setText(
+                    "Use this when the scheduled-task name "
+                    "does not change."
+                )
+
+            else:
+                description.setText(
+                    "Matches scheduled-task names beginning "
+                    "with the specified text. Use the narrowest "
+                    "prefix possible."
+                )
+                primary_label.setText(
+                    "Task name starts with:"
+                )
+                primary_edit.setPlaceholderText(
+                    "\\Microsoft\\Windows\\Example"
+                )
+
+                secondary_label.setText("")
+                secondary_edit.clear()
+                secondary_edit.setPlaceholderText("")
+                secondary_edit.setEnabled(False)
+
+                example.setText(
+                    "Avoid broad task-name prefixes."
+                )
+
+        def create_rule() -> None:
+            selected = rule_type.currentText()
+
+            primary = primary_edit.text().strip()
+            secondary = secondary_edit.text().strip()
+
+            rule_key = ""
+
+            if selected == "File name equals":
+                if (
+                    not primary
+                    or "\\" in primary
+                    or "/" in primary
+                    or "=" in primary
+                ):
+                    QMessageBox.warning(
+                        dialog,
+                        "Invalid File Rule",
+                        (
+                            "Enter a filename only, for example:\n\n"
+                            "Dropbox.exe\n\n"
+                            "Do not enter a path or use '='."
+                        ),
+                    )
+                    return
+
+                rule_key = (
+                    RULE_FILE_NAME
+                    + primary
+                )
+
+            elif selected in (
+                "Registry value equals",
+                "Registry value name starts with",
+            ):
+                registry_path = primary.rstrip(
+                    "\\"
+                )
+
+                normalised_path = (
+                    registry_path.upper()
+                )
+
+                if (
+                    not registry_path
+                    or "|" in registry_path
+                    or "=" in registry_path
+                    or not normalised_path.startswith(
+                        (
+                            "HKLM\\",
+                            "HKCU\\",
+                        )
+                    )
+                ):
+                    QMessageBox.warning(
+                        dialog,
+                        "Invalid Registry Rule",
+                        (
+                            "Enter an exact HKLM or HKCU "
+                            "registry key.\n\n"
+                            "Do not include a value name, "
+                            "'|', or '='."
+                        ),
+                    )
+                    return
+
+                if (
+                    not secondary
+                    or "|" in secondary
+                    or "=" in secondary
+                ):
+                    QMessageBox.warning(
+                        dialog,
+                        "Invalid Registry Rule",
+                        (
+                            "Enter a non-empty registry "
+                            "value name or prefix.\n\n"
+                            "Do not use '|' or '='."
+                        ),
+                    )
+                    return
+
+                if (
+                    selected
+                    == "Registry value equals"
+                ):
+                    rule_key = (
+                        RULE_REG_EXACT
+                        + registry_path
+                        + "|"
+                        + secondary
+                    )
+                else:
+                    rule_key = (
+                        RULE_REG_PREFIX
+                        + registry_path
+                        + "|"
+                        + secondary
+                    )
+
+            elif (
+                selected
+                == "Scheduled task name equals"
+            ):
+                if (
+                    not primary
+                    or "=" in primary
+                ):
+                    QMessageBox.warning(
+                        dialog,
+                        "Invalid Task Rule",
+                        (
+                            "Enter a non-empty task name.\n\n"
+                            "Do not use '='."
+                        ),
+                    )
+                    return
+
+                rule_key = (
+                    RULE_TASK_EXACT
+                    + primary
+                )
+
+            else:
+                if (
+                    not primary
+                    or "=" in primary
+                ):
+                    QMessageBox.warning(
+                        dialog,
+                        "Invalid Task Rule",
+                        (
+                            "Enter a non-empty task-name "
+                            "prefix.\n\n"
+                            "Do not use '='."
+                        ),
+                    )
+                    return
+
+                rule_key = (
+                    RULE_TASK_PREFIX
+                    + primary
+                )
+
+            existing_key = next(
+                (
+                    key
+                    for key in values
+                    if key.casefold()
+                    == rule_key.casefold()
+                ),
+                None,
+            )
+
+            if existing_key is not None:
+                QMessageBox.information(
+                    dialog,
+                    "Startup Monitor",
+                    (
+                        "That rule already exists in the "
+                        f"{list_name} list."
+                    ),
+                )
+                return
+
+            opposite_values = (
+                self.denied
+                if list_name == "Allowed"
+                else self.allowed
+            )
+
+            opposite_name = (
+                "Denied"
+                if list_name == "Allowed"
+                else "Allowed"
+            )
+
+            opposite_key = next(
+                (
+                    key
+                    for key in opposite_values
+                    if key.casefold()
+                    == rule_key.casefold()
+                ),
+                None,
+            )
+
+            if opposite_key is not None:
+                QMessageBox.warning(
+                    dialog,
+                    "Conflicting Rule",
+                    (
+                        "The same rule already exists in the "
+                        f"{opposite_name} list.\n\n"
+                        "Remove that rule first."
+                    ),
+                )
+                return
+
+            values[rule_key] = RULE_VALUE
+
+            self.store.save_allowed_denied(
+                self.allowed,
+                self.denied,
+            )
+            self.engine.reload_all(
+                create_baselines=False
+            )
+            self.engine.log(
+                "SETTINGS",
+                "gui",
+                log_action,
+                rule_key,
+                "SUCCESS",
+            )
+
+            populate_callback()
+            dialog.accept()
+
+        rule_type.currentTextChanged.connect(
+            update_rule_fields
+        )
+        cancel_button.clicked.connect(
+            dialog.reject
+        )
+        add_button.clicked.connect(
+            create_rule
+        )
+        primary_edit.returnPressed.connect(
+            create_rule
+        )
+        secondary_edit.returnPressed.connect(
+            create_rule
+        )
+
+        update_rule_fields()
+
+        dialog.exec()
+
+    def add_allowed_rule(self) -> None:
+        self._add_decision_rule(
+            "Allowed",
+            self.allowed,
+            self._populate_allowed_table,
+            "allowed_rule_add",
+        )
+
     def _build_allowed_tab(self, tabs: QTabWidget) -> None:
         (
             tab,
@@ -1136,6 +1666,7 @@ class SettingsWindow(QDialog):
             self.allowed_confirmation,
             self.allowed_confirmation_label,
         ) = self._create_decision_tab(
+            self.add_allowed_rule,
             self.remove_checked_allowed,
             self.confirm_remove_allowed,
             self.cancel_remove_allowed,
@@ -1429,6 +1960,14 @@ class SettingsWindow(QDialog):
             self.copy_allowed_path,
         )
 
+    def add_denied_rule(self) -> None:
+        self._add_decision_rule(
+            "Denied",
+            self.denied,
+            self._populate_denied_table,
+            "denied_rule_add",
+        )
+
     def _build_denied_tab(self, tabs: QTabWidget) -> None:
         (
             tab,
@@ -1436,6 +1975,7 @@ class SettingsWindow(QDialog):
             self.denied_confirmation,
             self.denied_confirmation_label,
         ) = self._create_decision_tab(
+            self.add_denied_rule,
             self.remove_checked_denied,
             self.confirm_remove_denied,
             self.cancel_remove_denied,

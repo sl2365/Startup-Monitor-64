@@ -21,6 +21,7 @@ For a quicker response, please post bug reports and FR's on the [PortableFreewar
   - New entries alert the user with a review GUI.
   - User can allow (approve) or deny (block/delete) new items.
   - Denied items are deleted after confirmation.
+  - Manual rule additions. [See warning and instructions.](Allowed_Denied_Rules.md)
 - **Persistence**:
   - Baseline snapshot on first run (never updated except on settings reset).
   - Tracks Allowed and Denied items separately for user decisions.
@@ -171,6 +172,8 @@ Manage the list of startup items that are explicitly allowed. Items in this list
   - **CopyPath:** Copies the full path of selected item.
 - **Use Case:**  
   For trusted programs you know and want to keep running at startup.
+- **Manual rule additions:**
+  You can now add your own rules to both the allowed/Denied tabs, but please read this first: [Warning and instructions.](Allowed_Denied_Rules.md)
 
 ---
 
@@ -187,6 +190,8 @@ Manage the list of startup items that are explicitly denied. Any item matching e
   - **CopyPath:** Copies the full path of selected item.
 - **Use Case:**  
   For known threats, unwanted software, or items you want to prevent from running at startup.
+- **Manual rule additions:**
+  You can now add your own rules to both the allowed/Denied tabs, but please read this first: [Warning and instructions.](Allowed_Denied_Rules.md)
 
 ---
 

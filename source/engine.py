@@ -11,6 +11,14 @@ from config_store import ConfigStore, Paths
 from scanners import delete_registry_value, delete_task, scan_folders, scan_registry, scan_tasks, stable_hash
 
 
+RULE_VALUE = "*"
+RULE_FILE_NAME = "[RULE FILE NAME] "
+RULE_REG_EXACT = "[RULE REG EXACT] "
+RULE_REG_PREFIX = "[RULE REG PREFIX] "
+RULE_TASK_EXACT = "[RULE TASK EXACT] "
+RULE_TASK_PREFIX = "[RULE TASK PREFIX] "
+
+
 @dataclass
 class ReviewItem:
     key: str
@@ -189,12 +197,32 @@ class MonitorEngine:
 
             if self.settings.get("ShowReview", "1") == "0":
                 remaining: List[ReviewItem] = []
+
                 for item in items:
-                    if item.key in self.denied:
+                    denied_rule = self._matching_decision_rule(
+                        self.denied,
+                        item.key,
+                        item.display_name,
+                        item.item_type,
+                    )
+
+                    allowed_rule = self._matching_decision_rule(
+                        self.allowed,
+                        item.key,
+                        item.display_name,
+                        item.item_type,
+                    )
+
+                    if item.key in self.denied or denied_rule:
                         self.remove_item(item)
-                    elif item.key not in self.allowed:
+                    elif (
+                        item.key not in self.allowed
+                        and not allowed_rule
+                    ):
                         remaining.append(item)
+
                 items = remaining
+
             return items
 
     def _current_tasks(self) -> Dict[str, str]:
@@ -206,6 +234,118 @@ class MonitorEngine:
             self.cached_tasks = scan_tasks()
             self.last_task_scan = datetime.now()
         return dict(self.cached_tasks)
+
+    @staticmethod
+    def _matching_decision_rule(
+        values: Dict[str, str],
+        key: str,
+        display_name: str,
+        item_type: str,
+    ) -> str:
+        for rule_key, marker in values.items():
+            if marker != RULE_VALUE:
+                continue
+
+            if (
+                item_type == "file"
+                and rule_key.startswith(RULE_FILE_NAME)
+            ):
+                expected_name = rule_key[
+                    len(RULE_FILE_NAME):
+                ].strip()
+
+                if (
+                    expected_name
+                    and display_name.casefold()
+                    == expected_name.casefold()
+                ):
+                    return rule_key
+
+            elif item_type == "reg":
+                if "|" not in key:
+                    continue
+
+                registry_path, value_name = key.rsplit(
+                    "|",
+                    1,
+                )
+
+                if rule_key.startswith(RULE_REG_EXACT):
+                    rule = rule_key[
+                        len(RULE_REG_EXACT):
+                    ]
+
+                    if "|" not in rule:
+                        continue
+
+                    rule_path, rule_value = rule.rsplit(
+                        "|",
+                        1,
+                    )
+
+                    if (
+                        registry_path.casefold()
+                        == rule_path.casefold()
+                        and value_name.casefold()
+                        == rule_value.casefold()
+                    ):
+                        return rule_key
+
+                elif rule_key.startswith(RULE_REG_PREFIX):
+                    rule = rule_key[
+                        len(RULE_REG_PREFIX):
+                    ]
+
+                    if "|" not in rule:
+                        continue
+
+                    rule_path, rule_prefix = rule.rsplit(
+                        "|",
+                        1,
+                    )
+
+                    if (
+                        rule_prefix
+                        and registry_path.casefold()
+                        == rule_path.casefold()
+                        and value_name.casefold().startswith(
+                            rule_prefix.casefold()
+                        )
+                    ):
+                        return rule_key
+
+            elif (
+                item_type == "task"
+                and rule_key.startswith(RULE_TASK_EXACT)
+            ):
+                expected_name = rule_key[
+                    len(RULE_TASK_EXACT):
+                ].strip()
+
+                if (
+                    expected_name
+                    and key.casefold()
+                    == expected_name.casefold()
+                ):
+                    return rule_key
+
+            elif (
+                item_type == "task"
+                and rule_key.startswith(RULE_TASK_PREFIX)
+            ):
+                expected_prefix = rule_key[
+                    len(RULE_TASK_PREFIX):
+                ].strip()
+
+                if (
+                    expected_prefix
+                    and key.casefold().startswith(
+                        expected_prefix.casefold()
+                    )
+                ):
+                    return rule_key
+
+        return ""
 
     def _process_item(
         self,
@@ -219,20 +359,79 @@ class MonitorEngine:
     ) -> None:
         if key in self.cancelled:
             return
-        default_allowed = self.settings.get("DefaultCheckReviewItems", "1") == "1"
 
-        if key in self.allowed:
-            if self.allowed[key] == item_hash:
+        default_allowed = (
+            self.settings.get(
+                "DefaultCheckReviewItems",
+                "1",
+            )
+            == "1"
+        )
+
+        denied_rule = self._matching_decision_rule(
+            self.denied,
+            key,
+            display_name,
+            item_type,
+        )
+
+        if denied_rule:
+            item = ReviewItem(
+                key=key,
+                display_name=display_name,
+                item_type=item_type,
+                detail=detail,
+                status="Denied rule matched",
+                item_hash=item_hash,
+                allowed=False,
+            )
+
+            if (
+                self.settings.get(
+                    "NotifyDeniedAgain",
+                    "1",
+                )
+                != "1"
+            ):
+                self.log(
+                    "DETECT_DENIED_RULE",
+                    item_type,
+                    key,
+                    f"{detail} | Rule: {denied_rule}",
+                    "AUTO_DELETE",
+                )
+                self.remove_item(item)
                 return
-            self.log("DETECT_MODIFIED", item_type, key, detail, "ALLOWED_ITEM_MODIFIED")
-            output.append(ReviewItem(key, display_name, item_type, detail, "Modified", item_hash, True))
+
+            self.log(
+                "DETECT_DENIED_RULE",
+                item_type,
+                key,
+                f"{detail} | Rule: {denied_rule}",
+                "DENIED_RULE_MATCHED",
+            )
+            output.append(item)
             return
 
         if key in self.denied:
-            status = "Denied item reappeared" if self.denied[key] == item_hash else "Denied item recreated"
-            event = "DETECT_DENIED_REAPPEARED" if self.denied[key] == item_hash else "DETECT_RECREATED"
+            status = (
+                "Denied item reappeared"
+                if self.denied[key] == item_hash
+                else "Denied item recreated"
+            )
+            event = (
+                "DETECT_DENIED_REAPPEARED"
+                if self.denied[key] == item_hash
+                else "DETECT_RECREATED"
+            )
 
-            if self.settings.get("NotifyDeniedAgain", "1") != "1":
+            if (
+                self.settings.get(
+                    "NotifyDeniedAgain",
+                    "1",
+                )
+                != "1"
+            ):
                 item = ReviewItem(
                     key=key,
                     display_name=display_name,
@@ -242,23 +441,115 @@ class MonitorEngine:
                     item_hash=item_hash,
                     allowed=False,
                 )
-                self.log(event, item_type, key, detail, "AUTO_DELETE")
+                self.log(
+                    event,
+                    item_type,
+                    key,
+                    detail,
+                    "AUTO_DELETE",
+                )
                 self.remove_item(item)
                 return
 
-            self.log(event, item_type, key, detail, status.upper().replace(" ", "_"))
-            output.append(ReviewItem(key, display_name, item_type, detail, status, item_hash, False))
+            self.log(
+                event,
+                item_type,
+                key,
+                detail,
+                status.upper().replace(
+                    " ",
+                    "_",
+                ),
+            )
+            output.append(
+                ReviewItem(
+                    key,
+                    display_name,
+                    item_type,
+                    detail,
+                    status,
+                    item_hash,
+                    False,
+                )
+            )
+            return
+
+        allowed_rule = self._matching_decision_rule(
+            self.allowed,
+            key,
+            display_name,
+            item_type,
+        )
+
+        if allowed_rule:
+            return
+
+        if key in self.allowed:
+            if self.allowed[key] == item_hash:
+                return
+
+            self.log(
+                "DETECT_MODIFIED",
+                item_type,
+                key,
+                detail,
+                "ALLOWED_ITEM_MODIFIED",
+            )
+            output.append(
+                ReviewItem(
+                    key,
+                    display_name,
+                    item_type,
+                    detail,
+                    "Modified",
+                    item_hash,
+                    True,
+                )
+            )
             return
 
         if key in baseline:
             if baseline[key] == item_hash:
                 return
-            self.log("DETECT_MODIFIED", item_type, key, detail, "BASELINE_ITEM_MODIFIED")
-            output.append(ReviewItem(key, display_name, item_type, detail, "Modified", item_hash, default_allowed))
+
+            self.log(
+                "DETECT_MODIFIED",
+                item_type,
+                key,
+                detail,
+                "BASELINE_ITEM_MODIFIED",
+            )
+            output.append(
+                ReviewItem(
+                    key,
+                    display_name,
+                    item_type,
+                    detail,
+                    "Modified",
+                    item_hash,
+                    default_allowed,
+                )
+            )
             return
 
-        self.log("DETECT_NEW", item_type, key, detail, "NEW_ITEM")
-        output.append(ReviewItem(key, display_name, item_type, detail, "New", item_hash, default_allowed))
+        self.log(
+            "DETECT_NEW",
+            item_type,
+            key,
+            detail,
+            "NEW_ITEM",
+        )
+        output.append(
+            ReviewItem(
+                key,
+                display_name,
+                item_type,
+                detail,
+                "New",
+                item_hash,
+                default_allowed,
+            )
+        )
 
     def commit_review(self, items: Iterable[ReviewItem]) -> None:
         with self.lock:
