@@ -210,11 +210,17 @@ def scan_tasks() -> Dict[str, str]:
 
 
 def _first_value(row: Dict[str, str], *names: str) -> str:
-    lowered = {str(key).strip().lower(): (value or "").strip() for key, value in row.items()}
+    lowered = {
+        str(key).strip().lower(): (value or "").strip()
+        for key, value in row.items()
+        if key is not None
+    }
+
     for name in names:
         value = lowered.get(name.lower(), "")
         if value:
             return value
+
     return ""
 
 

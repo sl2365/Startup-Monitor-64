@@ -1,4 +1,5 @@
 # Startup Monitor 64 — Features and Changes Completed During the Conversion
+This is a complete rewrite to convert from AutoIT to Python, greatly enhanced, with some new features and better performance.
 
 ## Core Conversion
 
@@ -234,3 +235,4 @@
 - Removed an unused dictionary-table attribute.
 - Removed an unused scanner import.
 - Reduced repeated code while retaining the same layout and functionality.
+- Memory usage refinements

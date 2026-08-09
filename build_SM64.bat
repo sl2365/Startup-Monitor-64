@@ -32,7 +32,7 @@ set "VERSION_SCRIPT=%SOURCE_DIR%\make_version_info.py"
 set "VERSION_FILE=%SOURCE_DIR%\version_info.txt"
 set "BUILD_DIR=%PROJECT_DIR%build"
 set "DIST_DIR=%PROJECT_DIR%dist"
-set "APP_NAME=StartupMonitor64_TEST"
+set "APP_NAME=StartupMonitor64"
 set "OUTPUT_EXE=%DIST_DIR%\%APP_NAME%.exe"
 
 cd /d "%PROJECT_DIR%"

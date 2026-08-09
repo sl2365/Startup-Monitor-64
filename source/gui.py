@@ -11,6 +11,7 @@ from PySide6.QtCore import QEvent, QItemSelectionModel, QTimer, Qt
 from PySide6.QtGui import (
     QCloseEvent,
     QColor,
+    QIcon,
     QIntValidator,
     QPalette,
 )
@@ -506,6 +507,10 @@ class SettingsWindow(QDialog):
 
         self.setWindowTitle("Startup Monitor - Settings")
         self.resize(920, 640)
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_DeleteOnClose,
+            True,
+        )
 
         self.settings = dict(engine.settings)
         self.folders = dict(engine.folders)
@@ -892,6 +897,17 @@ class SettingsWindow(QDialog):
         )
 
     def eventFilter(self, watched, event) -> bool:
+        if (
+            event.type() == QEvent.Type.Resize
+            and watched
+            is getattr(
+                self,
+                "about_tab",
+                None,
+            )
+        ):
+            self._position_about_icon()
+
         if (
             event.type() == QEvent.Type.MouseButtonPress
             and event.button() == Qt.MouseButton.RightButton
@@ -2258,11 +2274,59 @@ class SettingsWindow(QDialog):
             "The complete log has been copied to the clipboard.",
         )
 
+    def _position_about_icon(self) -> None:
+        if not hasattr(
+            self,
+            "about_icon_label",
+        ):
+            return
+
+        if not hasattr(
+            self,
+            "about_tab",
+        ):
+            return
+
+        margin = 18
+
+        self.about_icon_label.move(
+            self.about_tab.width()
+            - self.about_icon_label.width()
+            - margin,
+            margin,
+        )
+        self.about_icon_label.raise_()
+
     def _build_about_tab(self, tabs: QTabWidget) -> None:
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(14)
+
+        self.about_tab = tab
+        self.about_tab.installEventFilter(self)
+
+        self.about_icon_label = QLabel(tab)
+        self.about_icon_label.setFixedSize(
+            96,
+            96,
+        )
+        self.about_icon_label.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
+
+        if self.paths.icon.exists():
+            self.about_icon_label.setPixmap(
+                QIcon(
+                    str(self.paths.icon)
+                ).pixmap(
+                    96,
+                    96,
+                )
+            )
+
+        self.about_icon_label.show()
+        self.about_icon_label.raise_()
 
         title = QLabel(APP_NAME)
         title.setStyleSheet(
@@ -2270,6 +2334,11 @@ class SettingsWindow(QDialog):
             "font-weight: bold;"
         )
         layout.addWidget(title)
+
+        QTimer.singleShot(
+            0,
+            self._position_about_icon,
+        )
 
         information = QLabel(
             f"Version: {APP_VERSION}<br>"
@@ -3097,9 +3166,18 @@ class ApplicationUI:
             self.on_toggle_monitoring,
             self.is_monitoring_paused,
         )
+        self.settings_window.destroyed.connect(
+            self._settings_window_destroyed
+        )
         self.settings_window.show()
         self.settings_window.raise_()
         self.settings_window.activateWindow()
+
+    def _settings_window_destroyed(
+        self,
+        _object=None,
+    ) -> None:
+        self.settings_window = None
 
     def set_monitoring_paused(
         self,

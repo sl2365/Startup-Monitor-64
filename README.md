@@ -6,6 +6,8 @@ This Windows tray application monitors system startup locations, scheduled tasks
 
 The app can be used to monitor any custom location added by the user, so this could serve as an app monitor, checking for realtime changes in folders or registry locations.
 
+For a quicker response, please post bug reports and FR's on the [PortableFreeware](https://www.portablefreeware.com/forums/viewtopic.php?t=26600) forum.
+
 ---
 
 ## Features

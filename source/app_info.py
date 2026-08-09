@@ -9,6 +9,7 @@ APP_NAME = "Startup Monitor 64"
 APP_VERSION = "0.0.4.153"
 APP_AUTHOR = "sl23"
 APP_COMPANY = "sl23"
+APP_FILE_DESCRIPTION = "StartupMonitor64"
 APP_DESCRIPTION = (
     "Monitors Windows startup locations for new or modified entries."
 )

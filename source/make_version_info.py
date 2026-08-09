@@ -14,7 +14,7 @@ if str(SOURCE_DIR) not in sys.path:
 from app_info import (
     APP_COMPANY,
     APP_COPYRIGHT,
-    APP_DESCRIPTION,
+    APP_FILE_DESCRIPTION,
     APP_NAME,
     APP_VERSION,
 )
@@ -101,7 +101,7 @@ def create_version_resource(
                         ),
                         StringStruct(
                             u'FileDescription',
-                            u'{escape_resource_text(APP_DESCRIPTION)}',
+                            u'{escape_resource_text(APP_FILE_DESCRIPTION)}',
                         ),
                         StringStruct(
                             u'FileVersion',

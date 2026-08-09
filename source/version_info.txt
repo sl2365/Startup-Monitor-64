@@ -21,7 +21,7 @@ VSVersionInfo(
                         ),
                         StringStruct(
                             u'FileDescription',
-                            u'Monitors Windows startup locations for new or modified entries.',
+                            u'StartupMonitor64',
                         ),
                         StringStruct(
                             u'FileVersion',
