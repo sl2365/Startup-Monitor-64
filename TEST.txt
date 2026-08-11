@@ -1,0 +1,13 @@
+STARTUP MONITOR 64 - PYTHON BUILD
+
+[Failure testing]
+Test these scenarios deliberately:
+
+missing or read-only settings directory;
+deleted or malformed INI files;
+inaccessible monitored folder;
+invalid Registry path;
+scheduled-task query failure;
+pause during a scan;
+exit while a review window is open;
+Windows restart with the application configured to launch automatically.

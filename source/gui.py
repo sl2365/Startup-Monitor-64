@@ -1178,15 +1178,35 @@ class SettingsWindow(QDialog):
             "what it will match."
         )
         warning.setWordWrap(True)
-        warning.setStyleSheet(
-            "QLabel {"
-            "background-color: #fff3cd;"
-            "color: #664d03;"
-            "border: 1px solid #ffecb5;"
-            "border-radius: 4px;"
-            "padding: 10px;"
-            "}"
+
+        warning_is_dark = (
+            dialog.palette()
+            .color(QPalette.ColorRole.Window)
+            .lightness()
+            < 128
         )
+
+        if warning_is_dark:
+            warning.setStyleSheet(
+                "QLabel {"
+                "background-color: #1E1600;"
+                "color: #fff3cd;"
+                "border: 1px solid #fff3cd;"
+                "border-radius: 4px;"
+                "padding: 10px;"
+                "}"
+            )
+        else:
+            warning.setStyleSheet(
+                "QLabel {"
+                "background-color: #fff3cd;"
+                "color: #664d03;"
+                "border: 1px solid #ffecb5;"
+                "border-radius: 4px;"
+                "padding: 10px;"
+                "}"
+            )
+
         layout.addWidget(warning)
 
         type_label = QLabel("Rule type:")
@@ -3364,20 +3384,43 @@ class SettingsWindow(QDialog):
             paused
         )
 
-    @staticmethod
-    def _create_path_information_panel() -> QLabel:
+    def _create_path_information_panel(
+        self,
+    ) -> QLabel:
         information = QLabel()
         information.setWordWrap(True)
         information.setMinimumHeight(48)
-        information.setStyleSheet(
-            "QLabel {"
-            "background-color: #fff8d5;"
-            "border: 1px solid #e4d58a;"
-            "color: #766700;"
-            "font-weight: bold;"
-            "padding: 8px;"
-            "}"
+
+        information_is_dark = (
+            self.palette()
+            .color(QPalette.ColorRole.Window)
+            .lightness()
+            < 128
         )
+
+        if information_is_dark:
+            information.setStyleSheet(
+                "QLabel {"
+                "background-color: #281E01;"
+                "border: 1px solid #fff8d5;"
+                "border-radius: 6px;"
+                "color: #fff8d5;"
+                "font-weight: bold;"
+                "padding: 8px;"
+                "}"
+            )
+        else:
+            information.setStyleSheet(
+                "QLabel {"
+                "background-color: #fff8d5;"
+                "border: 1px solid #e4d58a;"
+                "border-radius: 6px;"
+                "color: #766700;"
+                "font-weight: bold;"
+                "padding: 8px;"
+                "}"
+            )
+
         information.setText(
             "Location/Path:"
         )
@@ -3393,23 +3436,45 @@ class SettingsWindow(QDialog):
         confirmation_layout = QHBoxLayout(panel)
         confirmation_layout.setContentsMargins(8, 6, 8, 6)
 
-        panel.setStyleSheet(
-            "QWidget {"
-            "background-color: #f7dada;"
-            "border: 1px solid #d9a7a7;"
-            "}"
-            "QLabel {"
-            "border: none;"
-            "font-weight: bold;"
-            "color: #8b2424;"
-            "}"
-            "QPushButton {"
-            "background-color: palette(button);"
-            "color: palette(button-text);"
-            "border: 1px solid palette(mid);"
-            "padding: 4px 12px;"
-            "}"
+        confirmation_is_dark = (
+            self.palette()
+            .color(QPalette.ColorRole.Window)
+            .lightness()
+            < 128
         )
+
+        panel.setObjectName(
+            "removeConfirmationPanel"
+        )
+
+        if confirmation_is_dark:
+            panel.setStyleSheet(
+                "QWidget#removeConfirmationPanel {"
+                "background-color: #2D0B0B;"
+                "border: 1px solid #f7dada;"
+                "border-radius: 6px;"
+                "}"
+                "QWidget#removeConfirmationPanel QLabel {"
+                "border: none;"
+                "background: transparent;"
+                "font-weight: bold;"
+                "color: #f7dada;"
+                "}"
+            )
+        else:
+            panel.setStyleSheet(
+                "QWidget#removeConfirmationPanel {"
+                "background-color: #f7dada;"
+                "border: 1px solid #d9a7a7;"
+                "border-radius: 6px;"
+                "}"
+                "QWidget#removeConfirmationPanel QLabel {"
+                "border: none;"
+                "background: transparent;"
+                "font-weight: bold;"
+                "color: #8b2424;"
+                "}"
+            )
 
         label = QLabel()
         label.setWordWrap(True)
