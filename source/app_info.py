@@ -6,7 +6,7 @@ except ImportError:
     BUILD_DATE = "Development"
 
 APP_NAME = "Startup Monitor 64"
-APP_VERSION = "0.0.4.157"
+APP_VERSION = "0.0.4.165"
 APP_AUTHOR = "sl23"
 APP_COMPANY = "sl23"
 APP_FILE_DESCRIPTION = "StartupMonitor64"

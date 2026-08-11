@@ -1,6 +1,16 @@
 @echo off
 setlocal EnableExtensions
 
+:: Ensure this build script is running as Administrator.
+powershell.exe -NoProfile -Command ^
+    "exit -not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)"
+if errorlevel 1 (
+    echo Requesting Administrator permission...
+    powershell.exe -NoProfile -Command ^
+        "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','\"%~f0\"' -Verb RunAs"
+    exit /b
+)
+
 :: ============================================================
 :: Startup Monitor 64 - Portable Python Build Script
 ::
@@ -100,20 +110,41 @@ if errorlevel 1 (
 
 echo.
 echo Closing any running copy of %APP_NAME%.exe...
-taskkill /IM "%APP_NAME%.exe" /F >nul 2>&1
+
+taskkill /F /T /IM "%APP_NAME%.exe" >nul 2>&1
+
+for /L %%I in (1,1,10) do (
+    tasklist /FI "IMAGENAME eq %APP_NAME%.exe" 2>nul | find /I "%APP_NAME%.exe" >nul
+    if errorlevel 1 goto app_closed
+
+    timeout /t 1 /nobreak >nul
+)
+
+echo.
+echo ERROR: %APP_NAME%.exe is still running.
+echo.
+echo Attempting final PowerShell termination...
+
+powershell.exe -NoProfile -Command ^
+    "Get-Process -Name '%APP_NAME%' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue"
+
 timeout /t 2 /nobreak >nul
 
 tasklist /FI "IMAGENAME eq %APP_NAME%.exe" 2>nul | find /I "%APP_NAME%.exe" >nul
 if not errorlevel 1 (
     echo.
-    echo ERROR: %APP_NAME%.exe is still running.
+    echo ERROR: %APP_NAME%.exe could not be terminated.
     echo.
-    echo Close Startup Monitor from its tray icon, or use Task Manager
-    echo to end %APP_NAME%.exe, then run this build again.
+    echo Please paste this Command Prompt output back to ChatGPT.
+    echo.
+    tasklist /FI "IMAGENAME eq %APP_NAME%.exe"
     echo.
     pause
     exit /b 1
 )
+
+:app_closed
+echo StartupMonitor64.exe is closed.
 
 echo Cleaning previous build files...
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"

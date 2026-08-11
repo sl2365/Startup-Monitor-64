@@ -3,6 +3,7 @@ from __future__ import annotations
 import configparser
 import os
 import subprocess
+import winreg
 from datetime import date
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
@@ -19,6 +20,9 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QButtonGroup,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -62,6 +66,7 @@ from engine import (
     RULE_TASK_PREFIX,
     RULE_VALUE,
 )
+from scanners import REGISTRY_TARGETS
 
 
 NUMERIC_OPTIONS = (
@@ -292,6 +297,209 @@ def apply_theme(
     application.setStyleSheet("")
 
 
+def item_type_colour(
+    item_type: str,
+    palette: QPalette,
+) -> QColor:
+    is_dark = (
+        palette
+        .color(QPalette.ColorRole.Window)
+        .lightness()
+        < 128
+    )
+
+    normalised_type = item_type.strip().casefold()
+
+    if normalised_type in ("file", "folder"):
+        return QColor(
+            "#6CB6FF"
+            if is_dark
+            else "#0067B8"
+        )
+
+    if normalised_type == "registry":
+        return QColor(
+            "#C79BFF"
+            if is_dark
+            else "#7A3DB8"
+        )
+
+    if normalised_type == "task":
+        return QColor(
+            "#75D98B"
+            if is_dark
+            else "#237A3B"
+        )
+
+    return palette.color(
+        QPalette.ColorRole.Text
+    )
+
+
+class CenteredCheckBoxDelegate(QStyledItemDelegate):
+    def paint(
+        self,
+        painter,
+        option,
+        index,
+    ) -> None:
+        style_option = QStyleOptionViewItem(option)
+        self.initStyleOption(style_option, index)
+
+        has_checkbox = bool(
+            style_option.features
+            & QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator
+        )
+
+        if not has_checkbox:
+            super().paint(
+                painter,
+                option,
+                index,
+            )
+            return
+
+        check_state = style_option.checkState
+
+        style_option.features &= (
+            ~QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator
+        )
+
+        style = (
+            style_option.widget.style()
+            if style_option.widget is not None
+            else QApplication.style()
+        )
+
+        style.drawControl(
+            QStyle.ControlElement.CE_ItemViewItem,
+            style_option,
+            painter,
+            style_option.widget,
+        )
+
+        indicator_option = QStyleOptionViewItem(option)
+        self.initStyleOption(
+            indicator_option,
+            index,
+        )
+        indicator_option.checkState = check_state
+
+        indicator_rect = style.subElementRect(
+            QStyle.SubElement.SE_ItemViewItemCheckIndicator,
+            indicator_option,
+            style_option.widget,
+        )
+        indicator_rect.moveCenter(option.rect.center())
+        indicator_option.rect = indicator_rect
+
+        style.drawPrimitive(
+            QStyle.PrimitiveElement.PE_IndicatorItemViewItemCheck,
+            indicator_option,
+            painter,
+            style_option.widget,
+        )
+
+    def editorEvent(
+        self,
+        event,
+        model,
+        option,
+        index,
+    ) -> bool:
+        if not (
+            index.flags()
+            & Qt.ItemFlag.ItemIsUserCheckable
+        ):
+            return super().editorEvent(
+                event,
+                model,
+                option,
+                index,
+            )
+
+        if (
+            event.type()
+            != QEvent.Type.MouseButtonRelease
+        ):
+            return super().editorEvent(
+                event,
+                model,
+                option,
+                index,
+            )
+
+        style_option = QStyleOptionViewItem(option)
+        self.initStyleOption(
+            style_option,
+            index,
+        )
+
+        style = (
+            style_option.widget.style()
+            if style_option.widget is not None
+            else QApplication.style()
+        )
+
+        indicator_rect = style.subElementRect(
+            QStyle.SubElement.SE_ItemViewItemCheckIndicator,
+            style_option,
+            style_option.widget,
+        )
+        indicator_rect.moveCenter(option.rect.center())
+
+        if not indicator_rect.contains(
+            event.position().toPoint()
+        ):
+            return False
+
+        current_state = index.data(
+            Qt.ItemDataRole.CheckStateRole
+        )
+
+        new_state = (
+            Qt.CheckState.Unchecked
+            if current_state == Qt.CheckState.Checked
+            else Qt.CheckState.Checked
+        )
+
+        return model.setData(
+            index,
+            new_state,
+            Qt.ItemDataRole.CheckStateRole,
+        )
+
+
+def _capture_table_sort_state(
+    table: QTableWidget,
+):
+    header = table.horizontalHeader()
+
+    return (
+        table.isSortingEnabled(),
+        header.sortIndicatorSection(),
+        header.sortIndicatorOrder(),
+    )
+
+
+def _restore_table_sort_state(
+    table: QTableWidget,
+    sorting_enabled: bool,
+    sort_column: int,
+    sort_order,
+) -> None:
+    if not sorting_enabled:
+        return
+
+    table.setSortingEnabled(True)
+
+    if sort_column >= 0:
+        table.sortItems(
+            sort_column,
+            sort_order,
+        )
+
+
 class ReviewDialog(QDialog):
     def __init__(
         self,
@@ -330,11 +538,21 @@ class ReviewDialog(QDialog):
             allow_cell.setCheckState(Qt.CheckState.Checked if item.allowed else Qt.CheckState.Unchecked)
             self.table.setItem(row, 0, allow_cell)
             self.table.setItem(row, 1, QTableWidgetItem(item.display_name))
-            self.table.setItem(row, 2, QTableWidgetItem(item.item_type))
+
+            type_item = QTableWidgetItem(item.item_type)
+            type_item.setForeground(
+                item_type_colour(
+                    item.item_type,
+                    self.table.palette(),
+                )
+            )
+            self.table.setItem(row, 2, type_item)
+
             self.table.setItem(row, 3, QTableWidgetItem(item.status))
             self.table.setItem(row, 4, QTableWidgetItem(item.detail))
 
         self.table.resizeColumnsToContents()
+        self.table.setSortingEnabled(True)
         layout.addWidget(self.table)
 
         buttons = QHBoxLayout()
@@ -866,6 +1084,13 @@ class SettingsWindow(QDialog):
             for index in table.selectionModel().selectedRows()
         }
 
+        (
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        ) = _capture_table_sort_state(table)
+
+        table.setSortingEnabled(False)
         table.blockSignals(True)
 
         try:
@@ -882,6 +1107,12 @@ class SettingsWindow(QDialog):
                 )
         finally:
             table.blockSignals(False)
+            _restore_table_sort_state(
+                table,
+                sorting_enabled,
+                sort_column,
+                sort_order,
+            )
 
     @staticmethod
     def _sync_action_selection_from_checkbox(
@@ -1027,6 +1258,7 @@ class SettingsWindow(QDialog):
 
         layout.addWidget(self.location_table)
         self._refresh_location_table()
+        self.location_table.setSortingEnabled(True)
 
         buttons = QHBoxLayout()
 
@@ -1104,24 +1336,30 @@ class SettingsWindow(QDialog):
         tab = QWidget()
         layout = QVBoxLayout(tab)
 
-        table = QTableWidget(0, 4)
+        table = QTableWidget(0, 5)
         table.setHorizontalHeaderLabels(
             [
                 "Select",
                 "#",
+                "Type",
                 "Item / Path",
                 "Saved fingerprint",
             ]
         )
 
         self._configure_action_table(table)
+        table.setItemDelegateForColumn(
+            0,
+            CenteredCheckBoxDelegate(table),
+        )
 
         table.horizontalHeader().setStretchLastSection(
             True
         )
-        table.setColumnWidth(0, 65)
+        table.setColumnWidth(0, 45)
         table.setColumnWidth(1, 45)
-        table.setColumnWidth(2, 560)
+        table.setColumnWidth(2, 85)
+        table.setColumnWidth(3, 525)
 
         table.customContextMenuRequested.connect(
             context_menu_callback
@@ -1694,6 +1932,7 @@ class SettingsWindow(QDialog):
         )
 
         self._populate_allowed_table()
+        self.allowed_table.setSortingEnabled(True)
         self.pending_allowed_removals: List[str] = []
 
         tabs.addTab(tab, "Allowed")
@@ -1703,6 +1942,13 @@ class SettingsWindow(QDialog):
         table: QTableWidget,
         values: Dict[str, str],
     ) -> None:
+        (
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        ) = _capture_table_sort_state(table)
+
+        table.setSortingEnabled(False)
         table.setRowCount(0)
 
         for number, (key, value) in enumerate(
@@ -1722,11 +1968,40 @@ class SettingsWindow(QDialog):
                 Qt.CheckState.Unchecked
             )
 
-            number_item = QTableWidgetItem(
-                str(number)
+            number_item = QTableWidgetItem()
+            number_item.setData(
+                Qt.ItemDataRole.EditRole,
+                number,
             )
             number_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter
+            )
+
+            if key.startswith(RULE_FILE_NAME):
+                item_type = "File"
+            elif (
+                key.startswith(RULE_REG_EXACT)
+                or key.startswith(RULE_REG_PREFIX)
+            ):
+                item_type = "Registry"
+            elif (
+                key.startswith(RULE_TASK_EXACT)
+                or key.startswith(RULE_TASK_PREFIX)
+            ):
+                item_type = "Task"
+            elif "|" in key:
+                item_type = "Registry"
+            elif key.startswith("\\") and not key.startswith("\\\\"):
+                item_type = "Task"
+            else:
+                item_type = "File"
+
+            type_item = QTableWidgetItem(item_type)
+            type_item.setForeground(
+                item_type_colour(
+                    item_type,
+                    table.palette(),
+                )
             )
 
             table.setItem(
@@ -1742,17 +2017,29 @@ class SettingsWindow(QDialog):
             table.setItem(
                 row,
                 2,
-                QTableWidgetItem(key),
+                type_item,
             )
             table.setItem(
                 row,
                 3,
+                QTableWidgetItem(key),
+            )
+            table.setItem(
+                row,
+                4,
                 QTableWidgetItem(value),
             )
 
         table.resizeRowsToContents()
         table.horizontalHeader().setStretchLastSection(
             True
+        )
+
+        _restore_table_sort_state(
+            table,
+            sorting_enabled,
+            sort_column,
+            sort_order,
         )
 
     def _populate_allowed_table(self) -> None:
@@ -1770,7 +2057,7 @@ class SettingsWindow(QDialog):
     ) -> Optional[List[str]]:
         keys = self._checked_column_values(
             table,
-            2,
+            3,
         )
 
         if not keys:
@@ -1840,7 +2127,7 @@ class SettingsWindow(QDialog):
     def _checked_allowed_keys(self) -> List[str]:
         return self._checked_column_values(
             self.allowed_table,
-            2,
+            3,
         )
 
     def remove_checked_allowed(self) -> None:
@@ -1915,9 +2202,182 @@ class SettingsWindow(QDialog):
     def copy_allowed_path(self) -> None:
         self._copy_table_value(
             self.allowed_table,
-            2,
+            3,
             "Select an Allowed item first.",
         )
+
+    def _open_file_location(
+        self,
+        path_text: str,
+        folder_only: bool = False,
+    ) -> None:
+        expanded_path = os.path.expandvars(path_text)
+        path = Path(expanded_path)
+
+        target = (
+            path
+            if folder_only
+            else path.parent
+        )
+
+        try:
+            os.startfile(str(target))
+        except OSError as error:
+            QMessageBox.critical(
+                self,
+                "Startup Monitor",
+                f"The location could not be opened.\n\n{error}",
+            )
+
+    def _open_registry_location(
+        self,
+        registry_path: str,
+    ) -> None:
+        registry_path = registry_path.split(
+            "|",
+            1,
+        )[0].rstrip("\\")
+
+        target = REGISTRY_TARGETS.get(registry_path)
+
+        if target is not None:
+            registry_path = (
+                f"{target.hive_name}\\{target.subkey}"
+            )
+
+        upper_path = registry_path.upper()
+
+        if upper_path == "HKLM":
+            registry_path = "HKEY_LOCAL_MACHINE"
+        elif upper_path.startswith("HKLM\\"):
+            registry_path = (
+                "HKEY_LOCAL_MACHINE\\"
+                + registry_path[5:]
+            )
+        elif upper_path == "HKCU":
+            registry_path = "HKEY_CURRENT_USER"
+        elif upper_path.startswith("HKCU\\"):
+            registry_path = (
+                "HKEY_CURRENT_USER\\"
+                + registry_path[5:]
+            )
+        elif not upper_path.startswith(
+            (
+                "HKEY_LOCAL_MACHINE",
+                "HKEY_CURRENT_USER",
+            )
+        ):
+            QMessageBox.information(
+                self,
+                "Startup Monitor",
+                "This item does not contain a registry "
+                "location that can be opened.",
+            )
+            return
+
+        try:
+            with winreg.CreateKey(
+                winreg.HKEY_CURRENT_USER,
+                (
+                    "Software\\Microsoft\\Windows\\"
+                    "CurrentVersion\\Applets\\Regedit"
+                ),
+            ) as key:
+                winreg.SetValueEx(
+                    key,
+                    "LastKey",
+                    0,
+                    winreg.REG_SZ,
+                    "Computer\\" + registry_path,
+                )
+
+            subprocess.Popen(["regedit.exe"])
+        except OSError as error:
+            QMessageBox.critical(
+                self,
+                "Startup Monitor",
+                f"RegEdit could not be opened.\n\n{error}",
+            )
+
+    def _open_task_scheduler(self) -> None:
+        try:
+            subprocess.Popen(
+                [
+                    "mmc.exe",
+                    "taskschd.msc",
+                ]
+            )
+        except OSError as error:
+            QMessageBox.critical(
+                self,
+                "Startup Monitor",
+                f"Task Scheduler could not be opened.\n\n{error}",
+            )
+
+    def go_to_allowed_item(self) -> None:
+        row = self.allowed_table.currentRow()
+
+        if row < 0:
+            return
+
+        type_item = self.allowed_table.item(row, 2)
+        key_item = self.allowed_table.item(row, 3)
+
+        if type_item is None or key_item is None:
+            return
+
+        item_type = type_item.text()
+        target = key_item.text()
+
+        if item_type == "File":
+            if target.startswith(RULE_FILE_NAME):
+                QMessageBox.information(
+                    self,
+                    "Startup Monitor",
+                    (
+                        "This Allowed rule contains only a "
+                        "filename, not a folder path, so there "
+                        "is no specific location to open."
+                    ),
+                )
+                return
+
+            self._open_file_location(target)
+
+        elif item_type == "Registry":
+            if target.startswith(RULE_REG_EXACT):
+                target = target[len(RULE_REG_EXACT):]
+            elif target.startswith(RULE_REG_PREFIX):
+                target = target[len(RULE_REG_PREFIX):]
+
+            self._open_registry_location(target)
+
+        elif item_type == "Task":
+            self._open_task_scheduler()
+
+    def go_to_base_startup_item(self) -> None:
+        row = self.base_startup_table.currentRow()
+
+        if row < 0:
+            return
+
+        type_item = self.base_startup_table.item(row, 3)
+        path_item = self.base_startup_table.item(row, 4)
+
+        if type_item is None or path_item is None:
+            return
+
+        if type_item.text() == "File":
+            self._open_file_location(path_item.text())
+
+        elif type_item.text() == "Registry":
+            self._open_registry_location(path_item.text())
+
+    def go_to_base_task_item(self) -> None:
+        if self.base_tasks_table.currentRow() < 0:
+            return
+
+        self._open_task_scheduler()
 
     def _show_standard_action_context_menu(
         self,
@@ -1928,6 +2388,9 @@ class SettingsWindow(QDialog):
         copy_callback: Callable[[], None],
         clicked_callback: Optional[
             Callable[[QTableWidgetItem], None]
+        ] = None,
+        go_to_callback: Optional[
+            Callable[[], None]
         ] = None,
     ) -> None:
         clicked_index = table.indexAt(position)
@@ -1955,8 +2418,17 @@ class SettingsWindow(QDialog):
         refresh_action = menu.addAction("Refresh")
         copy_action = menu.addAction("Copy Path")
 
+        go_to_action = None
+
+        if go_to_callback is not None:
+            menu.addSeparator()
+            go_to_action = menu.addAction("Go to...")
+
         remove_action.setEnabled(clicked_index.isValid())
         copy_action.setEnabled(clicked_index.isValid())
+
+        if go_to_action is not None:
+            go_to_action.setEnabled(clicked_index.isValid())
 
         selected_action = menu.exec(
             table.viewport().mapToGlobal(position)
@@ -1971,6 +2443,12 @@ class SettingsWindow(QDialog):
         elif selected_action == copy_action:
             copy_callback()
 
+        elif (
+            go_to_action is not None
+            and selected_action == go_to_action
+        ):
+            go_to_callback()
+
     def show_allowed_context_menu(self, position) -> None:
         self._show_standard_action_context_menu(
             self.allowed_table,
@@ -1978,6 +2456,7 @@ class SettingsWindow(QDialog):
             self.remove_checked_allowed,
             self.refresh_allowed,
             self.copy_allowed_path,
+            go_to_callback=self.go_to_allowed_item,
         )
 
     def add_denied_rule(self) -> None:
@@ -2003,6 +2482,7 @@ class SettingsWindow(QDialog):
         )
 
         self._populate_denied_table()
+        self.denied_table.setSortingEnabled(True)
         self.pending_denied_removals: List[str] = []
 
         tabs.addTab(tab, "Denied")
@@ -2016,7 +2496,7 @@ class SettingsWindow(QDialog):
     def _checked_denied_keys(self) -> List[str]:
         return self._checked_column_values(
             self.denied_table,
-            2,
+            3,
         )
 
     def remove_checked_denied(self) -> None:
@@ -2063,7 +2543,7 @@ class SettingsWindow(QDialog):
     def copy_denied_path(self) -> None:
         self._copy_table_value(
             self.denied_table,
-            2,
+            3,
             "Select a Denied item first.",
         )
 
@@ -2107,16 +2587,20 @@ class SettingsWindow(QDialog):
         )
 
         self._configure_action_table(table)
+        table.setItemDelegateForColumn(
+            0,
+            CenteredCheckBoxDelegate(table),
+        )
 
         table.horizontalHeader().setStretchLastSection(
             True
         )
 
-        table.setColumnWidth(0, 60)
-        table.setColumnWidth(1, 40)
+        table.setColumnWidth(0, 45)
+        table.setColumnWidth(1, 45)
         table.setColumnWidth(2, 180)
-        table.setColumnWidth(3, 85)
-        table.setColumnWidth(4, 430)
+        table.setColumnWidth(3, 55)
+        table.setColumnWidth(4, 415)
 
         table.customContextMenuRequested.connect(
             context_menu_callback
@@ -2145,6 +2629,7 @@ class SettingsWindow(QDialog):
 
         layout.addWidget(self.base_startup_table)
         self._populate_base_startup_table()
+        self.base_startup_table.setSortingEnabled(True)
 
         layout.addLayout(
             self._create_remove_button_row(
@@ -2173,6 +2658,15 @@ class SettingsWindow(QDialog):
         tabs.addTab(tab, "Base Startup")
 
     def _populate_base_startup_table(self) -> None:
+        (
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        ) = _capture_table_sort_state(
+            self.base_startup_table
+        )
+
+        self.base_startup_table.setSortingEnabled(False)
         self.base_startup_table.setRowCount(0)
         number = 1
 
@@ -2208,6 +2702,13 @@ class SettingsWindow(QDialog):
 
         self.base_startup_table.resizeRowsToContents()
 
+        _restore_table_sort_state(
+            self.base_startup_table,
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        )
+
     @staticmethod
     def _add_base_table_row(
         table: QTableWidget,
@@ -2231,8 +2732,10 @@ class SettingsWindow(QDialog):
             Qt.CheckState.Unchecked
         )
 
-        number_item = QTableWidgetItem(
-            str(number)
+        number_item = QTableWidgetItem()
+        number_item.setData(
+            Qt.ItemDataRole.EditRole,
+            number,
         )
         number_item.setTextAlignment(
             Qt.AlignmentFlag.AlignCenter
@@ -2261,10 +2764,19 @@ class SettingsWindow(QDialog):
             2,
             QTableWidgetItem(name),
         )
+
+        type_item = QTableWidgetItem(item_type)
+        type_item.setForeground(
+            item_type_colour(
+                item_type,
+                table.palette(),
+            )
+        )
+
         table.setItem(
             row,
             3,
-            QTableWidgetItem(item_type),
+            type_item,
         )
         table.setItem(
             row,
@@ -2445,6 +2957,7 @@ class SettingsWindow(QDialog):
             self.refresh_base_startup,
             self.copy_base_startup_path,
             self.show_base_startup_path,
+            self.go_to_base_startup_item,
         )
 
     def _build_base_tasks_tab(
@@ -2463,6 +2976,7 @@ class SettingsWindow(QDialog):
 
         layout.addWidget(self.base_tasks_table)
         self._populate_base_tasks_table()
+        self.base_tasks_table.setSortingEnabled(True)
 
         layout.addLayout(
             self._create_remove_button_row(
@@ -2489,6 +3003,15 @@ class SettingsWindow(QDialog):
         tabs.addTab(tab, "Base Tasks")
 
     def _populate_base_tasks_table(self) -> None:
+        (
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        ) = _capture_table_sort_state(
+            self.base_tasks_table
+        )
+
+        self.base_tasks_table.setSortingEnabled(False)
         self.base_tasks_table.setRowCount(0)
 
         for number, (key, value) in enumerate(
@@ -2510,6 +3033,13 @@ class SettingsWindow(QDialog):
             )
 
         self.base_tasks_table.resizeRowsToContents()
+
+        _restore_table_sort_state(
+            self.base_tasks_table,
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        )
 
     def _checked_base_task_keys(self) -> List[str]:
         return self._checked_column_values(
@@ -2622,6 +3152,7 @@ class SettingsWindow(QDialog):
             self.refresh_base_tasks,
             self.copy_base_task_path,
             self.show_base_task_path,
+            self.go_to_base_task_item,
         )
 
     def _build_log_tab(self, tabs: QTabWidget) -> None:
@@ -2655,15 +3186,42 @@ class SettingsWindow(QDialog):
         )
 
         self.log_table.setColumnWidth(0, 45)
-        self.log_table.setColumnWidth(1, 145)
-        self.log_table.setColumnWidth(2, 100)
-        self.log_table.setColumnWidth(3, 90)
+        self.log_table.setColumnWidth(1, 120)
+        self.log_table.setColumnWidth(2, 110)
+        self.log_table.setColumnWidth(3, 75)
         self.log_table.setColumnWidth(4, 170)
         self.log_table.setColumnWidth(5, 300)
         self.log_table.setColumnWidth(6, 90)
 
+        self.log_table.itemClicked.connect(
+            self.show_log_details
+        )
+
         layout.addWidget(self.log_table)
+
+        self.log_information = (
+            self._create_path_information_panel()
+        )
+        self.log_information.setTextFormat(
+            Qt.TextFormat.PlainText
+        )
+        self.log_information.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        self.log_information.setText(
+            "Log Details:\n"
+            "Select a log entry to view its full details."
+        )
+        self.log_information.setMinimumHeight(48)
+        self.log_information.setMaximumHeight(60)
+
+        self.log_table.setSortingEnabled(True)
+        self.log_table.sortItems(
+            0,
+            Qt.SortOrder.DescendingOrder,
+        )
         self.refresh_log_table()
+        self.log_table.scrollToTop()
 
         buttons = QHBoxLayout()
 
@@ -2676,14 +3234,207 @@ class SettingsWindow(QDialog):
         buttons.addWidget(copy_button)
 
         buttons.addStretch()
+
+        self.log_information_close_button = QPushButton(
+            "Close"
+        )
+        self.log_information_close_button.clicked.connect(
+            self.close_log_details
+        )
+        self.log_information_close_button.setVisible(False)
+        buttons.addWidget(
+            self.log_information_close_button
+        )
+
         layout.addLayout(buttons)
+        layout.addWidget(self.log_information)
 
         tabs.addTab(tab, "Log")
 
+    def close_log_details(self) -> None:
+        self.log_information.setText(
+            "Log Details:\n"
+            "Select a log entry to view its full details."
+        )
+        self.log_information.setMinimumHeight(48)
+        self.log_information.setMaximumHeight(60)
+        self.log_information_close_button.setVisible(False)
+
+    def show_log_details(
+        self,
+        item: QTableWidgetItem,
+    ) -> None:
+        row = item.row()
+
+        def cell_text(column: int) -> str:
+            cell = self.log_table.item(
+                row,
+                column,
+            )
+
+            if cell is None:
+                return ""
+
+            return cell.text()
+
+        timestamp = cell_text(1)
+        event = cell_text(2)
+        item_type = cell_text(3)
+        key = cell_text(4)
+        detail = cell_text(5)
+        status = cell_text(6)
+
+        self.log_information.setMinimumHeight(100)
+        self.log_information.setMaximumHeight(16777215)
+        self.log_information.setText(
+            "Log Details:\n\n"
+            f"Timestamp: {timestamp}\n"
+            f"Event: {event}\n"
+            f"Type: {item_type}\n"
+            f"Status: {status}\n\n"
+            f"Key:\n{key}\n\n"
+            f"Detail:\n{detail}"
+        )
+
+        self.log_information_close_button.setVisible(True)
+
+    def _log_event_colour(
+        self,
+        event: str,
+    ) -> QColor:
+        is_dark = (
+            self.palette()
+            .color(QPalette.ColorRole.Window)
+            .lightness()
+            < 128
+        )
+
+        event_upper = event.upper()
+
+        if (
+            "ERROR" in event_upper
+            or "FAILED" in event_upper
+            or "DENIED" in event_upper
+            or "DELETE" in event_upper
+            or "REMOVE" in event_upper
+        ):
+            return QColor(
+                "#ff8080"
+                if is_dark
+                else "#a00000"
+            )
+
+        if (
+            "MODIFIED" in event_upper
+            or "RECREATED" in event_upper
+            or "WARNING" in event_upper
+        ):
+            return QColor(
+                "#ffc966"
+                if is_dark
+                else "#9a5b00"
+            )
+
+        if (
+            "NEW" in event_upper
+            or "DETECT" in event_upper
+        ):
+            return QColor(
+                "#82c7ff"
+                if is_dark
+                else "#005fa8"
+            )
+
+        if (
+            "SETTINGS" in event_upper
+            or "CONFIG" in event_upper
+        ):
+            return QColor(
+                "#d6a1ff"
+                if is_dark
+                else "#6f2da8"
+            )
+
+        if "REVIEW_ALLOW" in event_upper:
+            return QColor(
+                "#8ed9b6"
+                if is_dark
+                else "#176b48"
+            )
+
+        if "SHUTDOWN" in event_upper:
+            return QColor(
+                "#a9c7e8"
+                if is_dark
+                else "#416987"
+            )
+
+        if (
+            "MONITOR" in event_upper
+            or "STARTUP" in event_upper
+            or "BASELINE" in event_upper
+        ):
+            return QColor(
+                "#8ed9b6"
+                if is_dark
+                else "#176b48"
+            )
+
+        return self.palette().color(
+            QPalette.ColorRole.Text
+        )
+
+    def _log_type_colour(
+        self,
+        item_type: str,
+    ) -> QColor:
+        is_dark = (
+            self.palette()
+            .color(QPalette.ColorRole.Window)
+            .lightness()
+            < 128
+        )
+
+        normalised_type = item_type.strip().casefold()
+
+        if normalised_type == "gui":
+            return QColor(
+                "#5ED6D6"
+                if is_dark
+                else "#007C7C"
+            )
+
+        if normalised_type == "application":
+            return QColor(
+                "#FFB86C"
+                if is_dark
+                else "#A85A00"
+            )
+
+        return item_type_colour(
+            item_type,
+            self.log_table.palette(),
+        )
+
     def refresh_log_table(self) -> None:
+        (
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        ) = _capture_table_sort_state(
+            self.log_table
+        )
+
+        self.log_table.setSortingEnabled(False)
         self.log_table.setRowCount(0)
 
         if not self.paths.log.exists():
+            _restore_table_sort_state(
+                self.log_table,
+                sorting_enabled,
+                sort_column,
+                sort_order,
+            )
             return
 
         try:
@@ -2696,6 +3447,12 @@ class SettingsWindow(QDialog):
                 self,
                 "Startup Monitor",
                 f"The log file could not be read.\n\n{error}",
+            )
+            _restore_table_sort_state(
+                self.log_table,
+                sorting_enabled,
+                sort_column,
+                sort_order,
             )
             return
 
@@ -2717,29 +3474,70 @@ class SettingsWindow(QDialog):
                 detail = line
                 status = ""
 
+            normalised_type = item_type.strip().casefold()
+
+            if normalised_type in ("reg", "registry"):
+                item_type = "Registry"
+            elif normalised_type == "file":
+                item_type = "File"
+            elif normalised_type == "folder":
+                item_type = "Folder"
+            elif normalised_type == "task":
+                item_type = "Task"
+            elif normalised_type == "gui":
+                item_type = "Gui"
+            elif normalised_type == "application":
+                item_type = "Application"
+            elif item_type:
+                item_type = item_type.strip().capitalize()
+
             row = self.log_table.rowCount()
             self.log_table.insertRow(row)
 
-            number_item = QTableWidgetItem(str(number))
+            number_item = QTableWidgetItem()
+            number_item.setData(
+                Qt.ItemDataRole.EditRole,
+                number,
+            )
             number_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter
             )
 
             self.log_table.setItem(row, 0, number_item)
+
+            timestamp_item = QTableWidgetItem(timestamp)
+            timestamp_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
+
             self.log_table.setItem(
                 row,
                 1,
-                QTableWidgetItem(timestamp),
+                timestamp_item,
             )
+
+            event_item = QTableWidgetItem(event)
+            event_item.setForeground(
+                self._log_event_colour(event)
+            )
+
             self.log_table.setItem(
                 row,
                 2,
-                QTableWidgetItem(event),
+                event_item,
             )
+
+            type_colour = self._log_type_colour(
+                item_type
+            )
+
+            type_item = QTableWidgetItem(item_type)
+            type_item.setForeground(type_colour)
+
             self.log_table.setItem(
                 row,
                 3,
-                QTableWidgetItem(item_type),
+                type_item,
             )
             self.log_table.setItem(
                 row,
@@ -2751,13 +3549,30 @@ class SettingsWindow(QDialog):
                 5,
                 QTableWidgetItem(detail),
             )
+
+            status_item = QTableWidgetItem(status)
+
+            if item_type in ("Gui", "Application"):
+                status_item.setForeground(type_colour)
+            else:
+                status_item.setForeground(
+                    self._log_event_colour(event)
+                )
+
             self.log_table.setItem(
                 row,
                 6,
-                QTableWidgetItem(status),
+                status_item,
             )
 
         self.log_table.resizeRowsToContents()
+
+        _restore_table_sort_state(
+            self.log_table,
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        )
 
         if self.log_table.rowCount() > 0:
             self.log_table.scrollToBottom()
@@ -2969,6 +3784,15 @@ class SettingsWindow(QDialog):
         tabs.addTab(tab, "About")
 
     def _refresh_location_table(self) -> None:
+        (
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        ) = _capture_table_sort_state(
+            self.location_table
+        )
+
+        self.location_table.setSortingEnabled(False)
         self.location_table.setRowCount(0)
 
         for path, enabled in self.folders.items():
@@ -2978,6 +3802,13 @@ class SettingsWindow(QDialog):
             self._add_location_row(location, "Registry", enabled)
 
         self.location_table.resizeRowsToContents()
+
+        _restore_table_sort_state(
+            self.location_table,
+            sorting_enabled,
+            sort_column,
+            sort_order,
+        )
 
     def _add_location_row(
         self,
@@ -3004,6 +3835,12 @@ class SettingsWindow(QDialog):
         location_item.setData(Qt.ItemDataRole.UserRole, location)
 
         type_item = QTableWidgetItem(location_type)
+        type_item.setForeground(
+            item_type_colour(
+                location_type,
+                self.location_table.palette(),
+            )
+        )
 
         self.location_table.setItem(row, 0, enabled_item)
         self.location_table.setItem(row, 1, location_item)
@@ -3283,10 +4120,11 @@ class SettingsWindow(QDialog):
         add_registry_action = menu.addAction("Add Registry Path")
         menu.addSeparator()
 
-        open_regedit_action = menu.addAction("Open RegEdit")
+        go_to_action = menu.addAction("Go to...")
 
         edit_action.setEnabled(clicked_index.isValid())
         remove_action.setEnabled(clicked_index.isValid())
+        go_to_action.setEnabled(clicked_index.isValid())
 
         selected_action = menu.exec(
             self.location_table.viewport().mapToGlobal(position)
@@ -3319,18 +4157,26 @@ class SettingsWindow(QDialog):
         elif selected_action == add_registry_action:
             self.add_registry_path()
 
-        elif selected_action == open_regedit_action:
-            self.open_regedit()
+        elif selected_action == go_to_action:
+            if not clicked_index.isValid():
+                return
 
-    def open_regedit(self) -> None:
-        try:
-            subprocess.Popen(["regedit.exe"])
-        except OSError as error:
-            QMessageBox.critical(
-                self,
-                "Startup Monitor",
-                f"RegEdit could not be opened.\n\n{error}",
-            )
+            row = clicked_index.row()
+            location_item = self.location_table.item(row, 1)
+            type_item = self.location_table.item(row, 2)
+
+            if location_item is None or type_item is None:
+                return
+
+            if type_item.text() == "Folder":
+                self._open_file_location(
+                    location_item.text(),
+                    folder_only=True,
+                )
+            elif type_item.text() == "Registry":
+                self._open_registry_location(
+                    location_item.text()
+                )
 
     def _sync_locations_from_table(self) -> None:
         folders: Dict[str, str] = {}
@@ -3401,7 +4247,7 @@ class SettingsWindow(QDialog):
         if information_is_dark:
             information.setStyleSheet(
                 "QLabel {"
-                "background-color: #281E01;"
+                "background-color: #211E17;"
                 "border: 1px solid #fff8d5;"
                 "border-radius: 6px;"
                 "color: #fff8d5;"
