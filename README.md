@@ -1,6 +1,6 @@
 # Startup Monitor 64
 
-[![Release](https://img.shields.io/github/v/release/sl2365/Startup-Monitor-64?style=for-the-badge-square&color=blue)](https://github.com/sl2365/Startup-Monitor-64/releases/latest/download/Startup-Monitor-64.rar)
+[![Release](https://img.shields.io/github/v/release/sl2365/Startup-Monitor-64?style=for-the-badge-square&color=orange)](https://github.com/sl2365/Startup-Monitor-64/releases/latest/download/Startup-Monitor-64.rar)
 [![Release Date](https://img.shields.io/github/release-date/sl2365/Startup-Monitor-64?style=for-the-badge-square&color=yellow)](https://github.com/sl2365/Startup-Monitor-64/releases)
 
 ## Overview
