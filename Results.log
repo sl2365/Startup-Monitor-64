@@ -1,0 +1,21 @@
+Startup Monitor 64 - Move to Denied Test
+==========================================
+
+- PASS: Base Startup file entry removed from BaseStartup.ini
+- PASS: Base Startup registry entry removed from BaseStartup.ini
+- PASS: Task A removed from BaseTasks.ini
+- PASS: Task B removed from BaseTasks.ini
+- FAIL: Base Startup file entry missing from Denied.ini
+- FAIL: Base Startup registry entry missing from Denied.ini
+- FAIL: Task A missing from Denied.ini
+- FAIL: Task B missing from Denied.ini
+- PASS: Moved file entry is not present in Allowed.ini
+- PASS: Moved registry entry is not present in Allowed.ini
+
+==========================================
+TEST SUMMARY
+==========================================
+- PASS checks: 6
+- FAIL checks: 4
+- Test folder: C:\Users\Scott\AppData\Local\Temp\StartupMonitor64_MoveToDenied_Test
+- OVERALL: FAIL

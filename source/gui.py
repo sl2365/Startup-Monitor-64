@@ -20,9 +20,6 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QButtonGroup,
-    QStyle,
-    QStyledItemDelegate,
-    QStyleOptionViewItem,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -334,154 +331,6 @@ def item_type_colour(
     return palette.color(
         QPalette.ColorRole.Text
     )
-
-
-class CenteredCheckBoxDelegate(QStyledItemDelegate):
-    def paint(
-        self,
-        painter,
-        option,
-        index,
-    ) -> None:
-        style_option = QStyleOptionViewItem(option)
-        self.initStyleOption(style_option, index)
-
-        has_checkbox = bool(
-            style_option.features
-            & QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator
-        )
-
-        if not has_checkbox:
-            super().paint(
-                painter,
-                option,
-                index,
-            )
-            return
-
-        check_state = style_option.checkState
-
-        style_option.features &= (
-            ~QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator
-        )
-
-        style = (
-            style_option.widget.style()
-            if style_option.widget is not None
-            else QApplication.style()
-        )
-
-        style.drawControl(
-            QStyle.ControlElement.CE_ItemViewItem,
-            style_option,
-            painter,
-            style_option.widget,
-        )
-
-        indicator_option = QStyleOptionViewItem(option)
-        self.initStyleOption(
-            indicator_option,
-            index,
-        )
-        indicator_option.checkState = check_state
-
-        indicator_rect = style.subElementRect(
-            QStyle.SubElement.SE_ItemViewItemCheckIndicator,
-            indicator_option,
-            style_option.widget,
-        )
-        indicator_rect.moveCenter(option.rect.center())
-        indicator_option.rect = indicator_rect
-
-        style.drawPrimitive(
-            QStyle.PrimitiveElement.PE_IndicatorItemViewItemCheck,
-            indicator_option,
-            painter,
-            style_option.widget,
-        )
-
-    def editorEvent(
-        self,
-        event,
-        model,
-        option,
-        index,
-    ) -> bool:
-        if not (
-            index.flags()
-            & Qt.ItemFlag.ItemIsUserCheckable
-        ):
-            return super().editorEvent(
-                event,
-                model,
-                option,
-                index,
-            )
-
-        style_option = QStyleOptionViewItem(option)
-        self.initStyleOption(
-            style_option,
-            index,
-        )
-
-        style = (
-            style_option.widget.style()
-            if style_option.widget is not None
-            else QApplication.style()
-        )
-
-        indicator_rect = style.subElementRect(
-            QStyle.SubElement.SE_ItemViewItemCheckIndicator,
-            style_option,
-            style_option.widget,
-        )
-        indicator_rect.moveCenter(option.rect.center())
-
-        if (
-            event.type()
-            == QEvent.Type.MouseButtonPress
-        ):
-            return indicator_rect.contains(
-                event.position().toPoint()
-            )
-
-        if (
-            event.type()
-            != QEvent.Type.MouseButtonRelease
-        ):
-            return super().editorEvent(
-                event,
-                model,
-                option,
-                index,
-            )
-
-        if not indicator_rect.contains(
-            event.position().toPoint()
-        ):
-            return False
-
-        current_state = index.data(
-            Qt.ItemDataRole.CheckStateRole
-        )
-
-        is_checked = (
-            current_state == Qt.CheckState.Checked
-            or current_state
-            == Qt.CheckState.Checked.value
-        )
-
-        new_state = (
-            Qt.CheckState.Unchecked.value
-            if is_checked
-            else Qt.CheckState.Checked.value
-        )
-
-        return model.setData(
-            index,
-            new_state,
-            Qt.ItemDataRole.CheckStateRole,
-        )
 
 
 def _capture_table_sort_state(
@@ -1072,22 +921,6 @@ class SettingsWindow(QDialog):
         )
         table.viewport().installEventFilter(self)
 
-    def _connect_checkbox_selection_sync(
-        self,
-        table: QTableWidget,
-    ) -> None:
-        table.itemSelectionChanged.connect(
-            lambda: self._sync_action_checkboxes_from_selection(
-                table
-            )
-        )
-        table.itemClicked.connect(
-            lambda item: self._sync_action_selection_from_checkbox(
-                table,
-                item,
-            )
-        )
-
     @staticmethod
     def _checked_column_values(
         table: QTableWidget,
@@ -1151,29 +984,6 @@ class SettingsWindow(QDialog):
                 sort_column,
                 sort_order,
             )
-
-    @staticmethod
-    def _sync_action_selection_from_checkbox(
-        table: QTableWidget,
-        item: QTableWidgetItem,
-    ) -> None:
-        if item.column() != 0:
-            return
-
-        selection_model = table.selectionModel()
-        model_index = table.model().index(item.row(), 0)
-
-        operation = (
-            QItemSelectionModel.SelectionFlag.Select
-            if item.checkState() == Qt.CheckState.Checked
-            else QItemSelectionModel.SelectionFlag.Deselect
-        )
-
-        selection_model.select(
-            model_index,
-            operation
-            | QItemSelectionModel.SelectionFlag.Rows,
-        )
 
     def eventFilter(self, watched, event) -> bool:
         if (
@@ -2422,6 +2232,9 @@ class SettingsWindow(QDialog):
         go_to_callback: Optional[
             Callable[[], None]
         ] = None,
+        move_to_denied_callback: Optional[
+            Callable[[], None]
+        ] = None,
     ) -> None:
         clicked_index = table.indexAt(position)
 
@@ -2445,6 +2258,14 @@ class SettingsWindow(QDialog):
         menu = QMenu(self)
 
         remove_action = menu.addAction("Remove")
+
+        move_to_denied_action = None
+
+        if move_to_denied_callback is not None:
+            move_to_denied_action = menu.addAction(
+                "Move to Denied"
+            )
+
         refresh_action = menu.addAction("Refresh")
         copy_action = menu.addAction("Copy Path")
 
@@ -2456,6 +2277,11 @@ class SettingsWindow(QDialog):
 
         remove_action.setEnabled(clicked_index.isValid())
         copy_action.setEnabled(clicked_index.isValid())
+
+        if move_to_denied_action is not None:
+            move_to_denied_action.setEnabled(
+                clicked_index.isValid()
+            )
 
         if go_to_action is not None:
             go_to_action.setEnabled(clicked_index.isValid())
@@ -2471,6 +2297,12 @@ class SettingsWindow(QDialog):
                 )
 
             remove_callback()
+
+        elif (
+            move_to_denied_action is not None
+            and selected_action == move_to_denied_action
+        ):
+            move_to_denied_callback()
 
         elif selected_action == refresh_action:
             refresh_callback()
@@ -2975,6 +2807,157 @@ class SettingsWindow(QDialog):
             "Select a Base Startup item first.",
         )
 
+    def move_base_startup_to_denied(self) -> None:
+        clicked_row = self.base_startup_table.currentRow()
+
+        if clicked_row < 0:
+            return
+
+        clicked_select_item = (
+            self.base_startup_table.item(
+                clicked_row,
+                0,
+            )
+        )
+
+        clicked_is_checked = (
+            clicked_select_item is not None
+            and clicked_select_item.checkState()
+            == Qt.CheckState.Checked
+        )
+
+        if clicked_is_checked:
+            rows = []
+
+            for row in range(
+                self.base_startup_table.rowCount()
+            ):
+                select_item = (
+                    self.base_startup_table.item(
+                        row,
+                        0,
+                    )
+                )
+
+                if (
+                    select_item is not None
+                    and select_item.checkState()
+                    == Qt.CheckState.Checked
+                ):
+                    rows.append(row)
+        else:
+            rows = [clicked_row]
+
+        items: List[tuple[str, str, str]] = []
+
+        for row in rows:
+            path_item = self.base_startup_table.item(
+                row,
+                4,
+            )
+            hash_item = self.base_startup_table.item(
+                row,
+                5,
+            )
+
+            if path_item is None or hash_item is None:
+                continue
+
+            source = str(
+                path_item.data(
+                    Qt.ItemDataRole.UserRole
+                )
+            )
+
+            if source not in ("folder", "registry"):
+                continue
+
+            items.append(
+                (
+                    path_item.text(),
+                    source,
+                    hash_item.text(),
+                )
+            )
+
+        if not items:
+            return
+
+        if len(items) == 1:
+            message = (
+                "Move this Base Startup item to Denied?\n\n"
+                f"{items[0][0]}\n\n"
+                "It will be removed from the baseline and "
+                "added to the Denied list.\n\n"
+                "If it is detected again, Startup Monitor may "
+                "remove it according to your Denied and Review "
+                "settings."
+            )
+        else:
+            message = (
+                f"Move these {len(items)} Base Startup items "
+                "to Denied?\n\n"
+                "They will be removed from the baseline and "
+                "added to the Denied list.\n\n"
+                "If they are detected again, Startup Monitor may "
+                "remove them according to your Denied and Review "
+                "settings."
+            )
+
+        selected_button = QMessageBox.question(
+            self,
+            "Move to Denied",
+            message,
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if selected_button != QMessageBox.StandardButton.Yes:
+            return
+
+        for key, source, item_hash in items:
+            self.denied[key] = item_hash
+            self.allowed.pop(key, None)
+
+            if source == "folder":
+                self.engine.base_folders.pop(
+                    key,
+                    None,
+                )
+            elif source == "registry":
+                self.engine.base_registry.pop(
+                    key,
+                    None,
+                )
+
+        self.store.save_allowed_denied(
+            self.allowed,
+            self.denied,
+        )
+        self.store.save_startup_baseline(
+            self.engine.base_folders,
+            self.engine.base_registry,
+        )
+        self.engine.reload_all(
+            create_baselines=False
+        )
+
+        self.engine.log(
+            "SETTINGS",
+            "gui",
+            "base_startup_move_to_denied",
+            f"{len(items)} item(s) moved to Denied",
+            "SUCCESS",
+        )
+
+        self._reset_path_information(
+            self.base_startup_information
+        )
+        self._populate_base_startup_table()
+        self._populate_allowed_table()
+        self._populate_denied_table()
+
     def show_base_startup_context_menu(
         self,
         position,
@@ -2987,6 +2970,9 @@ class SettingsWindow(QDialog):
             self.copy_base_startup_path,
             self.show_base_startup_path,
             self.go_to_base_startup_item,
+            move_to_denied_callback=(
+                self.move_base_startup_to_denied
+            ),
         )
 
     def _build_base_tasks_tab(
@@ -3170,6 +3156,137 @@ class SettingsWindow(QDialog):
             "Select a Base Task first.",
         )
 
+    def move_base_tasks_to_denied(self) -> None:
+        clicked_row = self.base_tasks_table.currentRow()
+
+        if clicked_row < 0:
+            return
+
+        clicked_select_item = (
+            self.base_tasks_table.item(
+                clicked_row,
+                0,
+            )
+        )
+
+        clicked_is_checked = (
+            clicked_select_item is not None
+            and clicked_select_item.checkState()
+            == Qt.CheckState.Checked
+        )
+
+        if clicked_is_checked:
+            rows = []
+
+            for row in range(
+                self.base_tasks_table.rowCount()
+            ):
+                select_item = self.base_tasks_table.item(
+                    row,
+                    0,
+                )
+
+                if (
+                    select_item is not None
+                    and select_item.checkState()
+                    == Qt.CheckState.Checked
+                ):
+                    rows.append(row)
+        else:
+            rows = [clicked_row]
+
+        items: List[tuple[str, str]] = []
+
+        for row in rows:
+            key_item = self.base_tasks_table.item(
+                row,
+                4,
+            )
+            hash_item = self.base_tasks_table.item(
+                row,
+                5,
+            )
+
+            if key_item is None or hash_item is None:
+                continue
+
+            items.append(
+                (
+                    key_item.text(),
+                    hash_item.text(),
+                )
+            )
+
+        if not items:
+            return
+
+        if len(items) == 1:
+            message = (
+                "Move this Base Task to Denied?\n\n"
+                f"{items[0][0]}\n\n"
+                "It will be removed from the baseline and "
+                "added to the Denied list.\n\n"
+                "If it is detected again, Startup Monitor may "
+                "remove it according to your Denied and Review "
+                "settings."
+            )
+        else:
+            message = (
+                f"Move these {len(items)} Base Tasks "
+                "to Denied?\n\n"
+                "They will be removed from the baseline and "
+                "added to the Denied list.\n\n"
+                "If they are detected again, Startup Monitor may "
+                "remove them according to your Denied and Review "
+                "settings."
+            )
+
+        selected_button = QMessageBox.question(
+            self,
+            "Move to Denied",
+            message,
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if selected_button != QMessageBox.StandardButton.Yes:
+            return
+
+        for key, item_hash in items:
+            self.denied[key] = item_hash
+            self.allowed.pop(key, None)
+            self.engine.base_tasks.pop(
+                key,
+                None,
+            )
+
+        self.store.save_allowed_denied(
+            self.allowed,
+            self.denied,
+        )
+        self.store.save_task_baseline(
+            self.engine.base_tasks
+        )
+        self.engine.reload_all(
+            create_baselines=False
+        )
+
+        self.engine.log(
+            "SETTINGS",
+            "gui",
+            "base_tasks_move_to_denied",
+            f"{len(items)} item(s) moved to Denied",
+            "SUCCESS",
+        )
+
+        self._reset_path_information(
+            self.base_tasks_information
+        )
+        self._populate_base_tasks_table()
+        self._populate_allowed_table()
+        self._populate_denied_table()
+
     def show_base_tasks_context_menu(
         self,
         position,
@@ -3182,6 +3299,9 @@ class SettingsWindow(QDialog):
             self.copy_base_task_path,
             self.show_base_task_path,
             self.go_to_base_task_item,
+            move_to_denied_callback=(
+                self.move_base_tasks_to_denied
+            ),
         )
 
     def _build_log_tab(self, tabs: QTabWidget) -> None:
