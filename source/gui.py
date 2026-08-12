@@ -418,17 +418,6 @@ class CenteredCheckBoxDelegate(QStyledItemDelegate):
                 index,
             )
 
-        if (
-            event.type()
-            != QEvent.Type.MouseButtonRelease
-        ):
-            return super().editorEvent(
-                event,
-                model,
-                option,
-                index,
-            )
-
         style_option = QStyleOptionViewItem(option)
         self.initStyleOption(
             style_option,
@@ -448,6 +437,25 @@ class CenteredCheckBoxDelegate(QStyledItemDelegate):
         )
         indicator_rect.moveCenter(option.rect.center())
 
+        if (
+            event.type()
+            == QEvent.Type.MouseButtonPress
+        ):
+            return indicator_rect.contains(
+                event.position().toPoint()
+            )
+
+        if (
+            event.type()
+            != QEvent.Type.MouseButtonRelease
+        ):
+            return super().editorEvent(
+                event,
+                model,
+                option,
+                index,
+            )
+
         if not indicator_rect.contains(
             event.position().toPoint()
         ):
@@ -457,10 +465,16 @@ class CenteredCheckBoxDelegate(QStyledItemDelegate):
             Qt.ItemDataRole.CheckStateRole
         )
 
+        is_checked = (
+            current_state == Qt.CheckState.Checked
+            or current_state
+            == Qt.CheckState.Checked.value
+        )
+
         new_state = (
-            Qt.CheckState.Unchecked
-            if current_state == Qt.CheckState.Checked
-            else Qt.CheckState.Checked
+            Qt.CheckState.Unchecked.value
+            if is_checked
+            else Qt.CheckState.Checked.value
         )
 
         return model.setData(
@@ -539,10 +553,23 @@ class ReviewDialog(QDialog):
             self.table.setItem(row, 0, allow_cell)
             self.table.setItem(row, 1, QTableWidgetItem(item.display_name))
 
-            type_item = QTableWidgetItem(item.item_type)
+            normalised_type = item.item_type.strip().casefold()
+
+            if normalised_type in ("reg", "registry"):
+                display_type = "Registry"
+            elif normalised_type == "file":
+                display_type = "File"
+            elif normalised_type == "folder":
+                display_type = "Folder"
+            elif normalised_type == "task":
+                display_type = "Task"
+            else:
+                display_type = item.item_type.strip().title()
+
+            type_item = QTableWidgetItem(display_type)
             type_item.setForeground(
                 item_type_colour(
-                    item.item_type,
+                    display_type,
                     self.table.palette(),
                 )
             )
@@ -759,6 +786,17 @@ class SettingsWindow(QDialog):
         self._build_base_tasks_tab(tabs)
         self._build_log_tab(tabs)
         self._build_about_tab(tabs)
+
+        self.log_file_signature = (
+            self._log_file_signature()
+        )
+
+        self.log_refresh_timer = QTimer(self)
+        self.log_refresh_timer.setInterval(1000)
+        self.log_refresh_timer.timeout.connect(
+            self._refresh_log_if_changed
+        )
+        self.log_refresh_timer.start()
 
         layout_margins = main_layout.contentsMargins()
         minimum_tab_width = (
@@ -1228,9 +1266,6 @@ class SettingsWindow(QDialog):
         finally:
             table.blockSignals(False)
 
-        if table is not self.location_table:
-            self._sync_action_checkboxes_from_selection(table)
-
     def _build_locations(self, tabs: QTabWidget) -> None:
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -1348,10 +1383,6 @@ class SettingsWindow(QDialog):
         )
 
         self._configure_action_table(table)
-        table.setItemDelegateForColumn(
-            0,
-            CenteredCheckBoxDelegate(table),
-        )
 
         table.horizontalHeader().setStretchLastSection(
             True
@@ -1364,7 +1395,6 @@ class SettingsWindow(QDialog):
         table.customContextMenuRequested.connect(
             context_menu_callback
         )
-        self._connect_checkbox_selection_sync(table)
 
         layout.addWidget(table)
         layout.addLayout(
@@ -2435,6 +2465,11 @@ class SettingsWindow(QDialog):
         )
 
         if selected_action == remove_action:
+            if table is not self.location_table:
+                self._sync_action_checkboxes_from_selection(
+                    table
+                )
+
             remove_callback()
 
         elif selected_action == refresh_action:
@@ -2587,10 +2622,6 @@ class SettingsWindow(QDialog):
         )
 
         self._configure_action_table(table)
-        table.setItemDelegateForColumn(
-            0,
-            CenteredCheckBoxDelegate(table),
-        )
 
         table.horizontalHeader().setStretchLastSection(
             True
@@ -2608,8 +2639,6 @@ class SettingsWindow(QDialog):
         table.itemClicked.connect(
             path_callback
         )
-
-        self._connect_checkbox_selection_sync(table)
 
         return table
 
@@ -3416,13 +3445,52 @@ class SettingsWindow(QDialog):
             self.log_table.palette(),
         )
 
-    def refresh_log_table(self) -> None:
+    def _log_file_signature(
+        self,
+    ) -> Optional[tuple[int, int]]:
+        try:
+            file_stat = self.paths.log.stat()
+        except OSError:
+            return None
+
+        return (
+            file_stat.st_mtime_ns,
+            file_stat.st_size,
+        )
+
+    def _refresh_log_if_changed(self) -> None:
+        current_signature = self._log_file_signature()
+
+        if current_signature == self.log_file_signature:
+            return
+
+        self.log_file_signature = current_signature
+
+        self.refresh_log_table(
+            preserve_view=True
+        )
+
+    def refresh_log_table(
+        self,
+        preserve_view: bool = False,
+    ) -> None:
         (
             sorting_enabled,
             sort_column,
             sort_order,
         ) = _capture_table_sort_state(
             self.log_table
+        )
+
+        scroll_bar = self.log_table.verticalScrollBar()
+        previous_scroll_value = scroll_bar.value()
+        previous_at_top = (
+            previous_scroll_value
+            <= scroll_bar.minimum()
+        )
+        previous_at_bottom = (
+            previous_scroll_value
+            >= scroll_bar.maximum()
         )
 
         self.log_table.setSortingEnabled(False)
@@ -3575,7 +3643,20 @@ class SettingsWindow(QDialog):
         )
 
         if self.log_table.rowCount() > 0:
-            self.log_table.scrollToBottom()
+            if preserve_view:
+                if previous_at_top:
+                    self.log_table.scrollToTop()
+                elif previous_at_bottom:
+                    self.log_table.scrollToBottom()
+                else:
+                    scroll_bar.setValue(
+                        min(
+                            previous_scroll_value,
+                            scroll_bar.maximum(),
+                        )
+                    )
+            else:
+                self.log_table.scrollToBottom()
 
     def delete_log(self) -> None:
         if not self.paths.log.exists():

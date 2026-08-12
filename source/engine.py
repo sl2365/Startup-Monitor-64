@@ -12,11 +12,11 @@ from scanners import delete_registry_value, delete_task, scan_folders, scan_regi
 
 
 RULE_VALUE = "*"
-RULE_FILE_NAME = "[RULE FILE NAME] "
-RULE_REG_EXACT = "[RULE REG EXACT] "
-RULE_REG_PREFIX = "[RULE REG PREFIX] "
-RULE_TASK_EXACT = "[RULE TASK EXACT] "
-RULE_TASK_PREFIX = "[RULE TASK PREFIX] "
+RULE_FILE_NAME = "RULE FILE NAME || "
+RULE_REG_EXACT = "RULE REG EXACT || "
+RULE_REG_PREFIX = "RULE REG PREFIX || "
+RULE_TASK_EXACT = "RULE TASK EXACT || "
+RULE_TASK_PREFIX = "RULE TASK PREFIX || "
 
 
 @dataclass
@@ -46,6 +46,10 @@ class MonitorEngine:
         self.base_tasks: Dict[str, str] = {}
         self.cached_tasks: Dict[str, str] = {}
         self.last_task_scan = datetime.min
+        self.last_log_entries: Dict[
+            tuple[str, str, str, str, str],
+            datetime,
+        ] = {}
         self.reload_all(create_baselines=True)
         self.initialise_logging()
 
@@ -152,9 +156,8 @@ class MonitorEngine:
         detail: str,
         status: str,
     ) -> None:
-        timestamp = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        now = datetime.now()
+
         safe = [
             part.replace("\r", " ").replace("\n", " ")
             for part in (
@@ -166,7 +169,34 @@ class MonitorEngine:
             )
         ]
 
+        signature = tuple(safe)
+
         with self.lock:
+            previous_time = self.last_log_entries.get(
+                signature
+            )
+
+            if (
+                previous_time is not None
+                and now - previous_time
+                < timedelta(seconds=60)
+            ):
+                return
+
+            self.last_log_entries[signature] = now
+
+            cutoff = now - timedelta(seconds=60)
+            self.last_log_entries = {
+                entry: entry_time
+                for entry, entry_time
+                in self.last_log_entries.items()
+                if entry_time >= cutoff
+            }
+
+            timestamp = now.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+
             with self.paths.log.open(
                 "a",
                 encoding="utf-8",

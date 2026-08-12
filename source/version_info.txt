@@ -1,7 +1,7 @@
 VSVersionInfo(
     ffi=FixedFileInfo(
-        filevers=(0, 0, 4, 165),
-        prodvers=(0, 0, 4, 165),
+        filevers=(0, 0, 4, 173),
+        prodvers=(0, 0, 4, 173),
         mask=0x3F,
         flags=0x0,
         OS=0x40004,
@@ -25,7 +25,7 @@ VSVersionInfo(
                         ),
                         StringStruct(
                             u'FileVersion',
-                            u'0.0.4.165',
+                            u'0.0.4.173',
                         ),
                         StringStruct(
                             u'InternalName',
@@ -45,7 +45,7 @@ VSVersionInfo(
                         ),
                         StringStruct(
                             u'ProductVersion',
-                            u'0.0.4.165',
+                            u'0.0.4.173',
                         ),
                     ],
                 ),
