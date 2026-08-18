@@ -3,6 +3,9 @@
 [![Release](https://img.shields.io/github/v/release/sl2365/Startup-Monitor-64?style=for-the-badge-square&color=orange)](https://github.com/sl2365/Startup-Monitor-64/releases/latest/download/Startup-Monitor-64.rar)
 [![Release Date](https://img.shields.io/github/release-date/sl2365/Startup-Monitor-64?style=for-the-badge-square&color=yellow)](https://github.com/sl2365/Startup-Monitor-64/releases)
 
+[![Latest Asset Downloads](https://img.shields.io/github/downloads/sl2365/Startup-Monitor-64/latest/Startup-Monitor-64.rar?style=for-the-badge-square&label=downloads&displayAssetName=false&color=blue)](https://github.com/sl2365/Startup-Monitor-64/releases/latest)
+[![Total Downloads](https://img.shields.io/github/downloads/sl2365/Startup-Monitor-64/total?style=for-the-badge-square&label=downloads-total&color=blue)](https://github.com/sl2365/Startup-Monitor-64/releases)
+
 ## Overview
 
 This Windows tray application monitors system startup locations, scheduled tasks, and registry entries for changes or new items. It alerts the user to new startup entries, lets the user approve or deny them, and provides options for logging and deletion. All configuration and log files are stored in a dedicated `App` folder within the application's directory, making it fully portable.
