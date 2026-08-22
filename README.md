@@ -246,7 +246,7 @@ For further support or questions, contact me, preferably on the StartupMonitor f
 1. Requires [python-3.10.9-embed-amd64](https://www.python.org/downloads/windows/).
 2. Extract Source files and open `build_SM64.bat`.
 3. Change this line to show the relative or absolute path to the folder containg python.exe:
-   set `TOOLS_DIR=%PROJECT_DIR%..\_Tools`
+   `set "PYTHON_DIR=%TOOLS_DIR%\python\_3.10.9"`
 4. Run `build_SM64.bat` to create the exe.
 
 ---
