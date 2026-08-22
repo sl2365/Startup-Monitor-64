@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/sl2365/Startup-Monitor-64?style=for-the-badge-square&color=orange)](https://github.com/sl2365/Startup-Monitor-64/releases/latest/download/Startup-Monitor-64.rar)
 [![Release Date](https://img.shields.io/github/release-date/sl2365/Startup-Monitor-64?style=for-the-badge-square&color=yellow)](https://github.com/sl2365/Startup-Monitor-64/releases)
 
-[![Latest Asset Downloads](https://img.shields.io/github/downloads/sl2365/Startup-Monitor-64/latest/StartupMonitor64.rar?style=for-the-badge-square&label=downloads-latest&displayAssetName=false&color=blue)](https://github.com/sl2365/Startup-Monitor-64/releases/latest)
+[![Latest Asset Downloads](https://img.shields.io/github/downloads/sl2365/Startup-Monitor-64/latest/Startup-Monitor-64.rar?style=for-the-badge-square&label=downloads-latest&displayAssetName=false&color=blue)](https://github.com/sl2365/Startup-Monitor-64/releases/latest)
 [![Total Downloads](https://img.shields.io/github/downloads/sl2365/Startup-Monitor-64/total?style=for-the-badge-square&label=downloads-total&color=blue)](https://github.com/sl2365/Startup-Monitor-64/releases)
 
 ## Overview
@@ -246,7 +246,7 @@ For further support or questions, contact me, preferably on the StartupMonitor f
 1. Requires [python-3.10.9-embed-amd64](https://www.python.org/downloads/windows/).
 2. Extract Source files and open `build_SM64.bat`.
 3. Change this line to show the relative or absolute path to the folder containg python.exe:
-   `set "PYTHON_DIR=%TOOLS_DIR%\python\_3.10.9"`
+   `set "PYTHON_DIR=%TOOLS_DIR%\python\_x.x.x"`
 4. Run `build_SM64.bat` to create the exe.
 
 ---

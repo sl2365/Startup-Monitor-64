@@ -32,7 +32,7 @@ if errorlevel 1 (
 
 set "PROJECT_DIR=%~dp0"
 set "TOOLS_DIR=%PROJECT_DIR%..\_Tools"
-set "PYTHON_DIR=%TOOLS_DIR%\python"
+set "PYTHON_DIR=%TOOLS_DIR%\python\_3.10.9"
 set "PYTHON_EXE=%PYTHON_DIR%\python.exe"
 set "SOURCE_DIR=%PROJECT_DIR%source"
 set "ENTRY_SCRIPT=%SOURCE_DIR%\StartupMonitor64.py"
